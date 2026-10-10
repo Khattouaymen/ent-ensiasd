@@ -1,7 +1,9 @@
 """Remplit la base avec des données fictives pour les tests et la démonstration.
 
     python manage.py peupler_demo
-    python manage.py peupler_demo --mot-de-passe "<mot de passe>"   (obligatoire en production)
+    python manage.py peupler_demo --mot-de-passe "<mot de passe>"
+    python manage.py peupler_demo --mot-de-passe-aleatoire       (généré et affiché une seule fois)
+En production, l'une des deux options est obligatoire.
 """
 
 import random
@@ -16,6 +18,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from absences.models import Absence, AlerteAbsence, Justification
+from comptes.importation import mot_de_passe_provisoire
 from comptes.models import Utilisateur
 from documents.attestation import generer_attestation
 from documents.models import DemandeDocument
@@ -42,15 +45,22 @@ class Command(BaseCommand):
             help="Mot de passe de tous les comptes de démonstration. Obligatoire en production : "
             "celui par défaut est publié dans le README.",
         )
+        parser.add_argument(
+            "--mot-de-passe-aleatoire",
+            action="store_true",
+            help="Génère un mot de passe aléatoire pour les comptes de démonstration et l'affiche une seule fois.",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
         mot_de_passe = options["mot_de_passe"]
-        if mot_de_passe is None:
+        if options["mot_de_passe_aleatoire"]:
+            mot_de_passe = mot_de_passe_provisoire(12)
+        elif mot_de_passe is None:
             if not settings.DEBUG:
                 raise CommandError(
                     "En production, choisissez le mot de passe des comptes de démonstration : "
-                    'python manage.py peupler_demo --mot-de-passe "…"'
+                    'python manage.py peupler_demo --mot-de-passe "…" (ou --mot-de-passe-aleatoire)'
                 )
             mot_de_passe = MOT_DE_PASSE_DEMO
         else:
@@ -229,3 +239,8 @@ class Command(BaseCommand):
             "Comptes : admin, scolarite, enseignant1 à enseignant3, etudiant1 à etudiant10 "
             "(mot de passe : celui du README, ou celui passé avec --mot-de-passe)."
         ))
+        if options["mot_de_passe_aleatoire"]:
+            self.stdout.write(self.style.WARNING(
+                f"Mot de passe des comptes de démonstration : {mot_de_passe}\n"
+                "Notez-le maintenant : il n'est enregistré nulle part en clair et ne sera plus affiché."
+            ))

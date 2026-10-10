@@ -35,7 +35,7 @@ cd ~/ent-ensiasd
 export DJANGO_DEBUG=0 DJANGO_SECRET_KEY_FILE=~/.ent_cle_secrete DJANGO_ALLOWED_HOSTS=<identifiant>.pythonanywhere.com
 ~/.virtualenvs/ent/bin/python manage.py migrate
 ~/.virtualenvs/ent/bin/python manage.py collectstatic --noinput
-~/.virtualenvs/ent/bin/python manage.py peupler_demo --mot-de-passe "<mot de passe à communiquer aux collègues>"
+~/.virtualenvs/ent/bin/python manage.py peupler_demo --mot-de-passe-aleatoire   # notez le mot de passe affiché
 ```
 
 Puis bouton **Reload** dans l'onglet « Web ».
