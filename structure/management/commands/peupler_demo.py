@@ -1,12 +1,16 @@
 """Remplit la base avec des données fictives pour les tests et la démonstration.
 
     python manage.py peupler_demo
+    python manage.py peupler_demo --mot-de-passe "<mot de passe>"   (obligatoire en production)
 """
 
 import random
 from datetime import date, datetime, time, timedelta
 
 from django.core.files.base import ContentFile
+from django.conf import settings
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
@@ -32,8 +36,29 @@ ENSEIGNANTS = [("Karim", "Alaoui"), ("Fatima", "Berrada"), ("Rachid", "Tazi")]
 class Command(BaseCommand):
     help = "Crée des données fictives (filière, classe, comptes, emploi du temps, absences…)."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--mot-de-passe",
+            help="Mot de passe de tous les comptes de démonstration. Obligatoire en production : "
+            "celui par défaut est publié dans le README.",
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
+        mot_de_passe = options["mot_de_passe"]
+        if mot_de_passe is None:
+            if not settings.DEBUG:
+                raise CommandError(
+                    "En production, choisissez le mot de passe des comptes de démonstration : "
+                    'python manage.py peupler_demo --mot-de-passe "…"'
+                )
+            mot_de_passe = MOT_DE_PASSE_DEMO
+        else:
+            try:
+                validate_password(mot_de_passe)
+            except ValidationError as erreur:
+                raise CommandError(" ".join(erreur.messages))
+
         if Filiere.objects.filter(code="MGSI").exists():
             raise CommandError(
                 "La base contient déjà les données de démonstration. "
@@ -43,7 +68,7 @@ class Command(BaseCommand):
         def compte(username, role, prenom, nom, **extra):
             u = Utilisateur(username=username, role=role, first_name=prenom, last_name=nom,
                             email=f"{username}@ensiasd.test", **extra)
-            u.set_password(MOT_DE_PASSE_DEMO)
+            u.set_password(mot_de_passe)
             u.save()
             return u
 
@@ -202,5 +227,5 @@ class Command(BaseCommand):
             f"{len(profs)} enseignants, {len(seances)} séances + 1 rattrapage, {len(supports)} ressources, "
             f"{Absence.objects.count()} absences et retards, {AlerteAbsence.objects.count()} alertes.\n"
             "Comptes : admin, scolarite, enseignant1 à enseignant3, etudiant1 à etudiant10 "
-            "(mot de passe dans le README)."
+            "(mot de passe : celui du README, ou celui passé avec --mot-de-passe)."
         ))

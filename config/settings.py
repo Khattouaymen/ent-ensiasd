@@ -9,14 +9,47 @@ au développement local.
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-dev-uniquement-a-remplacer-en-production",
-)
+CLE_DE_DEVELOPPEMENT = "django-insecure-dev-uniquement-a-remplacer-en-production"
+# La clé secrète vient de DJANGO_SECRET_KEY, ou d'un fichier (DJANGO_SECRET_KEY_FILE) généré
+# directement sur le serveur, pour qu'elle n'apparaisse ni dans le code ni dans la configuration.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY and os.environ.get("DJANGO_SECRET_KEY_FILE"):
+    SECRET_KEY = Path(os.environ["DJANGO_SECRET_KEY_FILE"]).read_text(encoding="utf-8").strip()
+SECRET_KEY = SECRET_KEY or CLE_DE_DEVELOPPEMENT
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 ALLOWED_HOSTS = [h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
+
+if not DEBUG and SECRET_KEY == CLE_DE_DEVELOPPEMENT:
+    raise ImproperlyConfigured("En production (DJANGO_DEBUG=0), définissez une vraie clé secrète dans DJANGO_SECRET_KEY.")
+
+# --- Production : site servi uniquement en HTTPS (hébergeur derrière un proxy) ---
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS]
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # HSTS : le navigateur n'utilisera plus que HTTPS pour ce site (sans les sous-domaines,
+    # qui appartiennent à l'hébergeur).
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "3600"))
+    # Volontaire : sur un sous-domaine d'hébergeur, ni « includeSubDomains » ni « preload ».
+    SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
+
+# En-tête contenant la vraie adresse IP du visiteur derrière le proxy de l'hébergeur
+# (utilisé pour le blocage après échecs de connexion). Vide : REMOTE_ADDR.
+ENTETE_IP_CLIENT = os.environ.get("DJANGO_ENTETE_IP_CLIENT", "")
+
+# Les erreurs serveur sont écrites dans le journal d'erreurs de l'hébergeur.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {"django": {"handlers": ["console"], "level": "WARNING"}},
+}
 
 
 INSTALLED_APPS = [

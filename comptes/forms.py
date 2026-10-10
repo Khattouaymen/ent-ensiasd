@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, PasswordResetForm, SetPasswordForm
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
@@ -20,7 +21,9 @@ def cle_tentatives(identifiant, request):
     le compte d'un autre ; bloquer seulement par IP bloquerait toute une salle
     derrière la même connexion.
     """
-    ip = request.META.get("REMOTE_ADDR", "") if request else ""
+    ip = ""
+    if request:
+        ip = (settings.ENTETE_IP_CLIENT and request.META.get(settings.ENTETE_IP_CLIENT)) or request.META.get("REMOTE_ADDR", "")
     return f"connexion:{(identifiant or '').strip().lower()}:{ip}"
 
 
