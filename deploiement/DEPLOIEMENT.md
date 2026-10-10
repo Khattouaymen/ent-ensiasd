@@ -40,9 +40,10 @@ export DJANGO_DEBUG=0 DJANGO_SECRET_KEY_FILE=~/.ent_cle_secrete DJANGO_ALLOWED_H
 
 Puis bouton **Reload** dans l'onglet « Web ».
 
-## 5. Sauvegarde quotidienne (onglet « Tasks »)
+## 5. Sauvegardes
 
-Tâche quotidienne :
+Les tâches planifiées (onglet « Tasks ») sont réservées aux comptes payants. Avec la formule gratuite,
+lancez la sauvegarde à la main (par exemple chaque semaine) dans une console Bash :
 
 ```bash
 cd ~/ent-ensiasd && DJANGO_DEBUG=0 DJANGO_SECRET_KEY_FILE=~/.ent_cle_secrete DJANGO_ALLOWED_HOSTS=<identifiant>.pythonanywhere.com ~/.virtualenvs/ent/bin/python manage.py sauvegarder
@@ -62,6 +63,8 @@ Puis **Reload** dans l'onglet « Web ».
 
 ## Limites de la formule gratuite
 
-- Le site est désactivé s'il n'est pas prolongé tous les 3 mois (bouton *Run until 3 months from today*, onglet « Web »).
+- Le site est désactivé s'il n'est pas prolongé **chaque mois** (bouton *Run until 1 month from today*, onglet « Web ») ; PythonAnywhere envoie un e-mail de rappel une semaine avant.
+- Pas de tâches planifiées : les sauvegardes se lancent à la main (voir plus haut).
+- 100 secondes de calcul par jour pour les consoles (le site lui-même n'est pas concerné).
 - Accès Internet sortant limité : l'envoi d'e-mails (mot de passe oublié) ne fonctionne qu'avec un serveur SMTP autorisé par PythonAnywhere.
 - Le blocage après échecs de connexion compte les essais en mémoire : il est remis à zéro à chaque redémarrage du site.
