@@ -1,0 +1,9 @@
+{% comment %}Champ de recherche qui conserve les autres filtres : {% include "_recherche.html" with placeholder="…" %}{% endcomment %}
+<form method="get" class="mb-3" role="search">
+  {% for cle, valeur in request.GET.items %}{% if cle != "q" and cle != "page" %}<input type="hidden" name="{{ cle }}" value="{{ valeur }}">{% endif %}{% endfor %}
+  <div class="input-group">
+    <span class="input-group-text"><i class="bi bi-search"></i></span>
+    <input type="search" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="{{ placeholder }}" aria-label="Rechercher">
+    <button class="btn btn-outline-secondary">Rechercher</button>
+  </div>
+</form>

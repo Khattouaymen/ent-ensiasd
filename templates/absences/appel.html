@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block titre %}Appel – {{ seance.matiere }}{% endblock %}
+{% block contenu %}
+<a href="{% url 'absences:choisir_seance' %}" class="small"><i class="bi bi-arrow-left"></i> Autre séance</a>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 my-3">
+  <div>
+    <h1 class="h3 mb-1">{{ seance.matiere }} <span class="badge text-bg-light align-middle">{{ seance.get_type_display }}</span>
+      {% if seance.est_rattrapage %}<span class="badge text-bg-warning align-middle">Rattrapage</span>{% endif %}</h1>
+    <p class="text-muted mb-0">
+      {{ seance.classe }}{% if seance.groupe %} · {{ seance.groupe.nom }}{% endif %} ·
+      {% if seance.est_rattrapage %}{{ seance.date_unique|date:"d/m/Y" }}{% else %}{{ seance.get_jour_display }}{% endif %}
+      {{ seance.heure_debut|time:"H:i" }}–{{ seance.heure_fin|time:"H:i" }} · {{ seance.salle }}
+    </p>
+  </div>
+  {% if not seance.est_rattrapage %}
+  <form method="get" class="d-flex gap-2 align-items-center">
+    <label for="date_appel" class="form-label mb-0 text-nowrap">Date</label>
+    <input type="date" id="date_appel" name="date" value="{{ date|date:'Y-m-d' }}" class="form-control" onchange="this.form.submit()">
+    <noscript><button class="btn btn-outline-secondary">Afficher</button></noscript>
+  </form>
+  {% endif %}
+</div>
+
+{% if erreur_date %}
+  <div class="alert alert-warning"><i class="bi bi-calendar-x me-1"></i>{{ erreur_date }} L'appel n'est pas possible pour cette date.</div>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="date" value="{{ date|date:'Y-m-d' }}">
+  <div class="card mb-3">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span>Appel du <strong>{{ date|date:"l j F Y" }}</strong></span>
+      <span class="small text-muted">{{ lignes|length }} étudiant(s)</span>
+    </div>
+    <ul class="list-group list-group-flush">
+      {% for l in lignes %}
+        {% with e=l.etudiant %}
+        <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            {{ e.last_name|upper }} {{ e.first_name }}
+            <span class="small text-muted">{% if e.groupe %}· {{ e.groupe.nom }}{% endif %}{% if e.cne %} · {{ e.cne }}{% endif %}</span>
+            {% if l.verrouillee %}<span class="badge text-bg-secondary ms-1" title="L'étudiant a déposé un justificatif">Justificatif déposé</span>{% endif %}
+          </div>
+          <div class="btn-group btn-group-sm" role="group" aria-label="Présence de {{ e.first_name }} {{ e.last_name }}">
+            <input type="radio" class="btn-check" name="etudiant_{{ e.pk }}" id="p{{ e.pk }}" value="present"{% if l.choix == "present" %} checked{% endif %}{% if l.verrouillee or erreur_date %} disabled{% endif %}>
+            <label class="btn btn-outline-success" for="p{{ e.pk }}">Présent</label>
+            <input type="radio" class="btn-check" name="etudiant_{{ e.pk }}" id="a{{ e.pk }}" value="absent"{% if l.choix == "absent" %} checked{% endif %}{% if l.verrouillee or erreur_date %} disabled{% endif %}>
+            <label class="btn btn-outline-danger" for="a{{ e.pk }}">Absent</label>
+            <input type="radio" class="btn-check" name="etudiant_{{ e.pk }}" id="r{{ e.pk }}" value="retard"{% if l.choix == "retard" %} checked{% endif %}{% if l.verrouillee or erreur_date %} disabled{% endif %}>
+            <label class="btn btn-outline-warning" for="r{{ e.pk }}">Retard</label>
+          </div>
+        </li>
+        {% endwith %}
+      {% empty %}
+        <li class="list-group-item text-muted">Aucun étudiant inscrit pour cette séance.</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% if lignes and not erreur_date %}<button type="submit" class="btn btn-ent"><i class="bi bi-check2-square me-1"></i>Enregistrer l'appel</button>{% endif %}
+</form>
+{% endblock %}

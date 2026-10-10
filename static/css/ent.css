@@ -1,0 +1,77 @@
+:root {
+  /* Bleu du logo ENSIASD */
+  --ent-primaire: #115ea3;
+  --ent-primaire-fonce: #0b4a82;
+  --ent-accent: #e0a526;
+}
+
+body {
+  background: #f4f6f9;
+}
+
+.bg-ent {
+  background-color: var(--ent-primaire);
+}
+
+.btn-ent {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--ent-primaire);
+  --bs-btn-border-color: var(--ent-primaire);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--ent-primaire-fonce);
+  --bs-btn-hover-border-color: var(--ent-primaire-fonce);
+}
+
+/* Page de connexion */
+.page-connexion {
+  min-height: calc(100vh - 3rem);
+}
+
+.carte-connexion {
+  max-width: 460px;
+  border-top: 4px solid var(--ent-primaire);
+}
+
+.logo-connexion {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Emblème rond de l'université dans la barre de navigation */
+.embleme {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  padding: 1px;
+}
+
+/* Indicateurs du tableau de bord */
+.stat .valeur {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--ent-primaire);
+}
+
+/* Emploi du temps */
+.seance {
+  border-left: 4px solid var(--ent-primaire);
+}
+
+.seance-TD {
+  border-left-color: #2a9d8f;
+}
+
+.seance-TP {
+  border-left-color: var(--ent-accent);
+}
+
+.text-ent {
+  color: var(--ent-primaire);
+}
+
+.seance-annulee .intitule,
+.seance-annulee .fw-semibold {
+  text-decoration: line-through;
+  color: var(--bs-secondary-color);
+}

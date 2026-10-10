@@ -1,0 +1,16 @@
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+
+# Données locales (base SQLite, fichiers déposés, fichiers statiques collectés)
+db.sqlite3
+media/
+staticfiles/
+
+# Divers
+.env
+.idea/
+.vscode/
+sauvegardes/
+.tmp/

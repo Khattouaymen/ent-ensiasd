@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block titre %}Tableau de bord{% endblock %}
+{% block contenu %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
+  <div>
+    <h1 class="h3 mb-1">Bonjour {{ user.first_name|default:user.username }}</h1>
+    <p class="text-muted mb-0">
+      {{ user.get_role_display }}{% if user.est_etudiant and user.classe %} · {{ user.classe }}{% if user.groupe %} · {{ user.groupe.nom }}{% endif %}{% endif %}
+    </p>
+  </div>
+  <span class="text-muted small">{% now "l j F Y" %}</span>
+</div>
+
+{% if stats %}
+<div class="row g-3 mb-4">
+  {% for libelle, valeur in stats %}
+  <div class="col-6 col-md-4 col-xl">
+    <div class="card stat h-100"><div class="card-body">
+      <div class="valeur">{{ valeur }}</div>
+      <div class="text-muted small">{{ libelle }}</div>
+    </div></div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <h2 class="h5 mb-3">Mes modules</h2>
+    <div class="row g-3">
+      {% if user.est_etudiant %}
+        {% include "comptes/_carte_module.html" with icone="calendar-week" titre="Emploi du temps" texte="Mes séances de la semaine." lien="emplois:mon_emploi_du_temps" %}
+        {% include "comptes/_carte_module.html" with icone="journal-text" titre="Cours, TD et TP" texte="Supports de ma filière et de mon niveau." lien="ressources:liste" %}
+        {% include "comptes/_carte_module.html" with icone="person-x" titre="Mes absences" texte="Heures d'absence par matière et justifications." lien="absences:mes_absences" %}
+        {% include "comptes/_carte_module.html" with icone="file-earmark-text" titre="Demandes de documents" texte="Attestations, relevés de notes…" lien="documents:liste" %}
+      {% elif user.est_enseignant %}
+        {% include "comptes/_carte_module.html" with icone="clipboard-check" titre="Faire l'appel" texte="Saisir les absences d'une séance." lien="absences:choisir_seance" %}
+        {% include "comptes/_carte_module.html" with icone="journal-arrow-up" titre="Mes ressources" texte="Déposer et gérer mes cours, TD et TP." lien="ressources:liste" %}
+        {% include "comptes/_carte_module.html" with icone="calendar-week" titre="Emploi du temps" texte="Mes séances de la semaine." lien="emplois:mon_emploi_du_temps" %}
+      {% elif user.est_scolarite %}
+        {% include "comptes/_carte_module.html" with icone="file-earmark-check" titre="Demandes de documents" texte="Traiter les demandes des étudiants." lien="documents:liste" %}
+        {% include "comptes/_carte_module.html" with icone="patch-check" titre="Justifications" texte="Valider ou refuser les justificatifs d'absence." lien="absences:justifications" %}
+        {% include "comptes/_carte_module.html" with icone="bar-chart" titre="Absences par classe" texte="Récapitulatif et export CSV." lien="absences:par_classe" %}
+        {% include "comptes/_carte_module.html" with icone="calendar-week" titre="Emplois du temps" texte="Emploi du temps de chaque classe." lien="emplois:emploi_du_temps_classe" %}
+        {% include "comptes/_carte_module.html" with icone="graph-up" titre="Statistiques" texte="Absences par matière et par semaine, délais de traitement." lien="statistiques" %}
+        {% include "comptes/_carte_module.html" with icone="people" titre="Importer des étudiants" texte="Créer les comptes d'une promotion depuis un CSV." lien="importer_etudiants" %}
+      {% elif user.est_admin %}
+        {% include "comptes/_carte_module.html" with icone="building-gear" titre="Administration" texte="Filières, classes, groupes, comptes, affectations et séances." lien="admin:index" %}
+        {% include "comptes/_carte_module.html" with icone="calendar-week" titre="Emplois du temps" texte="Emploi du temps de chaque classe." lien="emplois:emploi_du_temps_classe" %}
+        {% include "comptes/_carte_module.html" with icone="bar-chart" titre="Absences par classe" texte="Récapitulatif et export CSV." lien="absences:par_classe" %}
+        {% include "comptes/_carte_module.html" with icone="clipboard-check" titre="Saisir des absences" texte="Faire l'appel pour n'importe quelle séance." lien="absences:choisir_seance" %}
+        {% include "comptes/_carte_module.html" with icone="graph-up" titre="Statistiques" texte="Absences par matière et par semaine, délais de traitement." lien="statistiques" %}
+        {% include "comptes/_carte_module.html" with icone="people" titre="Importer des étudiants" texte="Créer les comptes d'une promotion depuis un CSV." lien="importer_etudiants" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    {% if user.est_etudiant or user.est_enseignant %}
+    <h2 class="h5 mb-3">Aujourd'hui</h2>
+    <div class="card mb-4"><ul class="list-group list-group-flush">
+      {% if fermeture %}
+        <li class="list-group-item text-muted"><i class="bi bi-calendar-x me-1"></i>{{ fermeture.get_type_display }} : {{ fermeture.nom }}</li>
+      {% endif %}
+      {% for s, annulation in seances_du_jour %}
+        <li class="list-group-item seance seance-{{ s.type }}{% if annulation %} seance-annulee{% endif %}">
+          <div class="d-flex justify-content-between gap-2">
+            <span class="fw-semibold">{{ s.heure_debut|time:"H:i" }} – {{ s.heure_fin|time:"H:i" }} · {{ s.matiere }}</span>
+            {% if annulation %}<span class="badge text-bg-danger">Annulée</span>{% elif s.est_rattrapage %}<span class="badge text-bg-warning">Rattrapage</span>{% endif %}
+          </div>
+          <div class="small text-muted">{{ s.get_type_display }} · <i class="bi bi-geo-alt"></i> {{ s.salle }}{% if user.est_etudiant %} · {{ s.enseignant }}{% else %} · {{ s.classe }}{% if s.groupe %} {{ s.groupe.nom }}{% endif %}{% endif %}</div>
+        </li>
+      {% empty %}
+        {% if not fermeture %}<li class="list-group-item text-muted">Aucune séance aujourd'hui.</li>{% endif %}
+      {% endfor %}
+    </ul></div>
+    {% endif %}
+
+    <h2 class="h5 mb-3">Notifications</h2>
+    <div class="card"><ul class="list-group list-group-flush">
+      {% for n in notifications %}
+        <li class="list-group-item small{% if not n.lue %} fw-semibold{% endif %}">
+          {% if n.lien %}<a href="{% url 'notifications:ouvrir' n.pk %}">{{ n.message }}</a>{% else %}{{ n.message }}{% endif %}<div class="text-muted fw-normal">{{ n.date_creation|timesince }}</div>
+        </li>
+      {% empty %}
+        <li class="list-group-item text-muted small">Aucune notification.</li>
+      {% endfor %}
+    </ul></div>
+  </div>
+</div>
+{% endblock %}

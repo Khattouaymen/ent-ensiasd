@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load ent %}
+{% block titre %}Traiter une justification{% endblock %}
+{% block contenu %}
+{% with a=justification.absence %}
+<div class="row justify-content-center"><div class="col-lg-7">
+  <a href="{% url 'absences:justifications' %}" class="small"><i class="bi bi-arrow-left"></i> Retour aux justifications</a>
+  <h1 class="h3 my-3">Justification d'absence</h1>
+
+  <div class="card mb-4"><div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-4">Étudiant</dt><dd class="col-sm-8">{{ a.etudiant }}{% if a.etudiant.cne %} · {{ a.etudiant.cne }}{% endif %}</dd>
+      <dt class="col-sm-4">Absence</dt><dd class="col-sm-8">{{ a.seance.matiere }} ({{ a.seance.get_type_display }}) · {{ a.date|date:"l j F Y" }}, {{ a.seance.heure_debut|time:"H:i" }}–{{ a.seance.heure_fin|time:"H:i" }}</dd>
+      <dt class="col-sm-4">Motif</dt><dd class="col-sm-8">{{ justification.motif|linebreaksbr }}</dd>
+      <dt class="col-sm-4">Pièce jointe</dt><dd class="col-sm-8"><a href="{% url 'absences:piece_jointe' justification.pk %}"><i class="bi bi-paperclip"></i> Télécharger</a></dd>
+      <dt class="col-sm-4">Déposée le</dt><dd class="col-sm-8">{{ justification.date_depot|date:"d/m/Y H:i" }}</dd>
+      <dt class="col-sm-4">Statut</dt><dd class="col-sm-8"><span class="badge text-bg-{{ justification.statut|couleur_justification }}">{{ justification.get_statut_display }}</span></dd>
+      {% if justification.traitee_par %}
+        <dt class="col-sm-4">Traitée par</dt><dd class="col-sm-8">{{ justification.traitee_par }} le {{ justification.date_traitement|date:"d/m/Y H:i" }}</dd>
+      {% endif %}
+      {% if justification.commentaire %}
+        <dt class="col-sm-4">Commentaire</dt><dd class="col-sm-8">{{ justification.commentaire }}</dd>
+      {% endif %}
+    </dl>
+  </div></div>
+
+  {% if historique %}
+  <div class="card mb-4"><div class="card-body">
+    <h2 class="h6">Justifications précédentes pour cette absence</h2>
+    <ul class="list-unstyled small mb-0">
+      {% for h in historique %}
+        <li class="mb-1">
+          {{ h.date_depot|date:"d/m/Y" }} · <span class="badge text-bg-{{ h.statut|couleur_justification }}">{{ h.get_statut_display }}</span>
+          · {{ h.motif|truncatechars:60 }}{% if h.commentaire %} — <em>{{ h.commentaire }}</em>{% endif %}
+          · <a href="{% url 'absences:piece_jointe' h.pk %}">pièce jointe</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div></div>
+  {% endif %}
+
+  {% if justification.statut == "EN_ATTENTE" %}
+  <div class="card"><div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="commentaire" class="form-label">Commentaire pour l'étudiant (facultatif)</label>
+        <textarea id="commentaire" name="commentaire" rows="3" class="form-control"></textarea>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" name="decision" value="accepter" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Accepter</button>
+        <button type="submit" name="decision" value="refuser" class="btn btn-outline-danger"><i class="bi bi-x-lg me-1"></i>Refuser</button>
+      </div>
+    </form>
+  </div></div>
+  {% endif %}
+</div></div>
+{% endwith %}
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titre %}Changer mon mot de passe{% endblock %}
+{% block contenu %}
+<div class="row justify-content-center"><div class="col-lg-6">
+  <h1 class="h3 mb-4">Changer mon mot de passe</h1>
+  <div class="card"><div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      {% include "_formulaire.html" %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-ent">Enregistrer</button>
+        <a href="{% url 'mon_compte' %}" class="btn btn-outline-secondary">Annuler</a>
+      </div>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}

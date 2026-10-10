@@ -1,0 +1,13 @@
+{% comment %}Affiche les champs d'un formulaire avec le style Bootstrap : {% include "_formulaire.html" with form=form %}{% endcomment %}
+{% for erreur in form.non_field_errors %}
+  <div class="alert alert-danger small">{{ erreur }}</div>
+{% endfor %}
+{% for champ in form.hidden_fields %}{{ champ }}{% endfor %}
+{% for champ in form.visible_fields %}
+  <div class="mb-3">
+    <label for="{{ champ.id_for_label }}" class="form-label">{{ champ.label }}{% if champ.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+    {{ champ }}
+    {% for erreur in champ.errors %}<div class="text-danger small mt-1">{{ erreur }}</div>{% endfor %}
+    {% if champ.help_text %}<div class="form-text">{{ champ.help_text|safe }}</div>{% endif %}
+  </div>
+{% endfor %}

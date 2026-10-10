@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titre %}Mon compte{% endblock %}
+{% block contenu %}
+<div class="row justify-content-center"><div class="col-lg-7">
+  <h1 class="h3 mb-4">Mon compte</h1>
+  <div class="card mb-3"><div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-4">Nom</dt><dd class="col-sm-8">{{ user.get_full_name|default:"—" }}</dd>
+      <dt class="col-sm-4">Identifiant</dt><dd class="col-sm-8">{{ user.username }}</dd>
+      <dt class="col-sm-4">E-mail</dt><dd class="col-sm-8">{{ user.email|default:"—" }}</dd>
+      <dt class="col-sm-4">Rôle</dt><dd class="col-sm-8">{{ user.get_role_display }}</dd>
+      {% if user.est_etudiant %}
+        <dt class="col-sm-4">CNE</dt><dd class="col-sm-8">{{ user.cne|default:"—" }}</dd>
+        <dt class="col-sm-4">Classe</dt><dd class="col-sm-8">{{ user.classe|default:"—" }}{% if user.groupe %} · {{ user.groupe.nom }}{% endif %}</dd>
+      {% endif %}
+      <dt class="col-sm-4">Dernière connexion</dt><dd class="col-sm-8">{{ user.last_login|date:"d/m/Y H:i"|default:"—" }}</dd>
+    </dl>
+  </div></div>
+  <p class="small text-muted">Une information est incorrecte ? Contactez le service de scolarité.</p>
+  <a href="{% url 'changer_mot_de_passe' %}" class="btn btn-ent"><i class="bi bi-key me-1"></i>Changer mon mot de passe</a>
+</div></div>
+{% endblock %}

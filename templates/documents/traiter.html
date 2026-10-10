@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load ent %}
+{% block titre %}Traiter une demande{% endblock %}
+{% block contenu %}
+<div class="row justify-content-center"><div class="col-lg-7">
+  <a href="{% url 'documents:liste' %}" class="small"><i class="bi bi-arrow-left"></i> Retour aux demandes</a>
+  <h1 class="h3 my-3">{{ demande.get_type_document_display }}</h1>
+
+  <div class="card mb-4"><div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-4">Étudiant</dt><dd class="col-sm-8">{{ demande.etudiant }}{% if demande.etudiant.cne %} · {{ demande.etudiant.cne }}{% endif %}</dd>
+      <dt class="col-sm-4">Classe</dt><dd class="col-sm-8">{{ demande.etudiant.classe|default:"—" }}</dd>
+      <dt class="col-sm-4">Demandée le</dt><dd class="col-sm-8">{{ demande.date_demande|date:"d/m/Y H:i" }}</dd>
+      <dt class="col-sm-4">Motif</dt><dd class="col-sm-8">{{ demande.motif|default:"—" }}</dd>
+      <dt class="col-sm-4">Statut</dt><dd class="col-sm-8"><span class="badge text-bg-{{ demande.statut|couleur_statut }}">{{ demande.get_statut_display }}</span></dd>
+      {% if demande.traitee_par %}
+        <dt class="col-sm-4">Traitée par</dt><dd class="col-sm-8">{{ demande.traitee_par }} le {{ demande.date_traitement|date:"d/m/Y H:i" }}</dd>
+      {% endif %}
+      {% if demande.commentaire %}
+        <dt class="col-sm-4">Commentaire</dt><dd class="col-sm-8">{{ demande.commentaire }}</dd>
+      {% endif %}
+      {% if demande.document %}
+        <dt class="col-sm-4">Document</dt><dd class="col-sm-8"><a href="{% url 'documents:telecharger' demande.pk %}">Télécharger</a></dd>
+      {% endif %}
+    </dl>
+  </div></div>
+
+  {% if form %}
+  <div class="card"><div class="card-body">
+    <h2 class="h5 mb-3">Mettre à jour le statut</h2>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% include "_formulaire.html" %}
+      <button type="submit" class="btn btn-ent">Enregistrer et notifier l'étudiant</button>
+    </form>
+  </div></div>
+  {% elif ajout %}
+  <div class="card"><div class="card-body">
+    <h2 class="h5 mb-3">{% if demande.document %}Remplacer le document{% else %}Joindre le document{% endif %}</h2>
+    {% if not demande.document %}<p class="small text-muted">Aucun fichier n'est joint : l'étudiant doit pour l'instant retirer son document au guichet.</p>{% endif %}
+    <form method="post" enctype="multipart/form-data" class="mb-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="joindre">
+      {% include "_formulaire.html" with form=ajout %}
+      <button type="submit" class="btn btn-ent">Joindre et notifier l'étudiant</button>
+    </form>
+    {% if demande.type_document == "ATTESTATION_SCOLARITE" %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="generer">
+      <button type="submit" class="btn btn-outline-primary"><i class="bi bi-file-earmark-pdf me-1"></i>{% if demande.document %}Régénérer{% else %}Générer{% endif %} l'attestation automatiquement</button>
+    </form>
+    {% endif %}
+  </div></div>
+  {% else %}
+    <div class="alert alert-secondary">Cette demande est clôturée.</div>
+  {% endif %}
+</div></div>
+{% endblock %}

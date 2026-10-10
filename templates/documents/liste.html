@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load ent %}
+{% block titre %}Demandes de documents{% endblock %}
+{% block contenu %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <h1 class="h3 mb-0">{% if user.est_etudiant %}Mes demandes de documents{% else %}Demandes de documents{% endif %}</h1>
+  {% if user.est_etudiant %}
+    <a href="{% url 'documents:nouvelle' %}" class="btn btn-ent"><i class="bi bi-plus-lg me-1"></i>Nouvelle demande</a>
+  {% endif %}
+</div>
+
+{% if filtres %}
+<ul class="nav nav-pills mb-3 flex-wrap">
+  {% for valeur, libelle in filtres %}
+    <li class="nav-item"><a class="nav-link{% if filtre == valeur %} active{% endif %}" href="{% querystring statut=valeur page=None %}">{{ libelle }}</a></li>
+  {% endfor %}
+</ul>
+{% include "_recherche.html" with placeholder="Nom, prénom ou CNE de l'étudiant" %}
+{% endif %}
+
+<div class="card"><div class="table-responsive">
+<table class="table table-hover align-middle mb-0">
+  <thead class="table-light"><tr>
+    {% if not user.est_etudiant %}<th>Étudiant</th>{% endif %}
+    <th>Document</th><th>Demandée le</th><th>Statut</th><th>Commentaire</th><th></th>
+  </tr></thead>
+  <tbody>
+  {% for d in page %}
+    <tr>
+      {% if not user.est_etudiant %}<td>{{ d.etudiant }}<div class="small text-muted">{{ d.etudiant.classe|default:"" }}</div></td>{% endif %}
+      <td>{{ d.get_type_document_display }}{% if d.motif %}<div class="small text-muted">{{ d.motif|truncatechars:60 }}</div>{% endif %}</td>
+      <td>{{ d.date_demande|date:"d/m/Y" }}</td>
+      <td><span class="badge text-bg-{{ d.statut|couleur_statut }}">{{ d.get_statut_display }}</span></td>
+      <td class="small">{{ d.commentaire|default:"—" }}</td>
+      <td class="text-end text-nowrap">
+        {% if d.document %}
+          <a href="{% url 'documents:telecharger' d.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-download me-1"></i>Télécharger</a>
+        {% elif user.est_etudiant and d.statut == "PRETE" %}
+          <span class="small text-success">À retirer au guichet</span>
+        {% endif %}
+        {% if not user.est_etudiant %}
+          <a href="{% url 'documents:traiter' d.pk %}" class="btn btn-sm btn-ent">{% if d.statut == "EN_ATTENTE" or d.statut == "ACCEPTEE" %}Traiter{% else %}Voir{% endif %}</a>
+        {% endif %}
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="text-muted">Aucune demande.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div></div>
+{% include "_pagination.html" %}
+{% endblock %}

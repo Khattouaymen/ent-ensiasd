@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titre %}Déposer un support{% endblock %}
+{% block contenu %}
+<div class="row justify-content-center"><div class="col-lg-7">
+  <h1 class="h3 mb-4">Déposer un support</h1>
+  {% if not form.fields.matiere.queryset.exists %}
+    <div class="alert alert-warning">Aucune matière ne vous est affectée. Contactez l'administration.</div>
+  {% endif %}
+  <div class="card"><div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% include "_formulaire.html" %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-ent">Déposer</button>
+        <a href="{% url 'ressources:liste' %}" class="btn btn-outline-secondary">Annuler</a>
+      </div>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}

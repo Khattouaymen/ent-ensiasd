@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block titre %}Emploi du temps{% endblock %}
+{% block contenu %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h3 mb-0">{{ titre }}</h1>
+  {% if classes %}
+  <form method="get" action="{% url 'emplois:emploi_du_temps_classe' %}" class="d-flex gap-2">
+    <input type="hidden" name="semaine" value="{{ lundi|date:'Y-m-d' }}">
+    <label for="classe" class="visually-hidden">Classe</label>
+    <select id="classe" name="classe" class="form-select" onchange="this.form.submit()">
+      {% for c in classes %}
+        <option value="{{ c.pk }}"{% if c == classe_courante %} selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button class="btn btn-ent">Afficher</button></noscript>
+  </form>
+  {% endif %}
+</div>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+  <a class="btn btn-sm btn-outline-secondary" href="{% querystring semaine=semaine_precedente|date:'Y-m-d' %}" aria-label="Semaine précédente"><i class="bi bi-chevron-left"></i></a>
+  <span class="fw-semibold">Semaine du {{ lundi|date:"j F" }} au {{ samedi|date:"j F Y" }}</span>
+  <a class="btn btn-sm btn-outline-secondary" href="{% querystring semaine=semaine_suivante|date:'Y-m-d' %}" aria-label="Semaine suivante"><i class="bi bi-chevron-right"></i></a>
+  <a class="btn btn-sm btn-link" href="{% querystring semaine=None %}">Cette semaine</a>
+</div>
+
+{% if sans_classe %}
+  <div class="alert alert-warning">Vous n'êtes affecté(e) à aucune classe. Contactez l'administration.</div>
+{% endif %}
+
+<div class="row g-3">
+  {% for jour in jours %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100{% if jour.date == aujourdhui %} border-primary{% endif %}">
+      <div class="card-header fw-semibold d-flex justify-content-between">
+        <span>{{ jour.date|date:"l j F"|capfirst }}</span>
+        {% if jour.date == aujourdhui %}<span class="badge text-bg-primary">Aujourd'hui</span>{% endif %}
+      </div>
+      {% if jour.fermeture %}
+        <div class="card-body text-muted small"><i class="bi bi-calendar-x me-1"></i>{{ jour.fermeture.get_type_display }} : {{ jour.fermeture.nom }}</div>
+      {% else %}
+      <ul class="list-group list-group-flush">
+        {% for s, annulation in jour.seances %}
+          <li class="list-group-item seance seance-{{ s.type }}{% if annulation %} seance-annulee{% endif %}">
+            <div class="d-flex justify-content-between gap-2">
+              <span class="fw-semibold">{{ s.heure_debut|time:"H:i" }} – {{ s.heure_fin|time:"H:i" }}</span>
+              <span>
+                {% if annulation %}<span class="badge text-bg-danger">Annulée</span>{% endif %}
+                {% if s.est_rattrapage %}<span class="badge text-bg-warning">Rattrapage</span>{% endif %}
+                <span class="badge text-bg-light">{{ s.get_type_display }}</span>
+              </span>
+            </div>
+            <div class="intitule">{{ s.matiere }}</div>
+            <div class="small text-muted">
+              <i class="bi bi-geo-alt"></i> {{ s.salle }}
+              {% if user.est_enseignant %} · {{ s.classe }}{% else %} · {{ s.enseignant }}{% endif %}
+              {% if s.groupe %} · {{ s.groupe.nom }}{% endif %}
+            </div>
+            {% if annulation.motif %}<div class="small text-danger">{{ annulation.motif }}</div>{% endif %}
+          </li>
+        {% empty %}
+          <li class="list-group-item text-muted small">Aucune séance</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

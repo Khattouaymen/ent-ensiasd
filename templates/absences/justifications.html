@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load ent %}
+{% block titre %}Justifications d'absence{% endblock %}
+{% block contenu %}
+<h1 class="h3 mb-4">Justifications d'absence</h1>
+
+<ul class="nav nav-pills mb-3 flex-wrap">
+  {% for valeur, libelle in filtres %}
+    <li class="nav-item"><a class="nav-link{% if filtre == valeur %} active{% endif %}" href="{% querystring statut=valeur page=None %}">{{ libelle }}</a></li>
+  {% endfor %}
+</ul>
+{% include "_recherche.html" with placeholder="Nom, prénom ou CNE de l'étudiant" %}
+
+<div class="card"><div class="table-responsive">
+<table class="table table-hover align-middle mb-0">
+  <thead class="table-light"><tr><th>Étudiant</th><th>Absence</th><th>Motif</th><th>Déposée le</th><th>Statut</th><th></th></tr></thead>
+  <tbody>
+  {% for j in page %}
+    {% with a=j.absence %}
+    <tr>
+      <td>{{ a.etudiant }}<div class="small text-muted">{{ a.etudiant.classe|default:"" }}</div></td>
+      <td>{{ a.seance.matiere }}<div class="small text-muted">{{ a.date|date:"d/m/Y" }}</div></td>
+      <td class="small">{{ j.motif|truncatechars:60 }}</td>
+      <td>{{ j.date_depot|date:"d/m/Y" }}</td>
+      <td><span class="badge text-bg-{{ j.statut|couleur_justification }}">{{ j.get_statut_display }}</span></td>
+      <td class="text-end"><a href="{% url 'absences:traiter_justification' j.pk %}" class="btn btn-sm btn-ent">{% if j.statut == "EN_ATTENTE" %}Traiter{% else %}Voir{% endif %}</a></td>
+    </tr>
+    {% endwith %}
+  {% empty %}
+    <tr><td colspan="6" class="text-muted">Aucune justification.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div></div>
+{% include "_pagination.html" %}
+{% endblock %}

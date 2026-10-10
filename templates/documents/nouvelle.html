@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titre %}Nouvelle demande{% endblock %}
+{% block contenu %}
+<div class="row justify-content-center"><div class="col-lg-6">
+  <h1 class="h3 mb-4">Demander un document</h1>
+  <div class="card"><div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      {% include "_formulaire.html" %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-ent">Envoyer la demande</button>
+        <a href="{% url 'documents:liste' %}" class="btn btn-outline-secondary">Annuler</a>
+      </div>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}

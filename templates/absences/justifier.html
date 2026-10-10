@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titre %}Justifier une absence{% endblock %}
+{% block contenu %}
+<div class="row justify-content-center"><div class="col-lg-6">
+  <h1 class="h3 mb-1">Justifier une absence</h1>
+  <p class="text-muted mb-4">{{ absence.seance.matiere }} · {{ absence.date|date:"l j F Y" }}, {{ absence.seance.heure_debut|time:"H:i" }}–{{ absence.seance.heure_fin|time:"H:i" }}</p>
+  {% if precedente %}
+    <div class="alert alert-warning small">
+      Votre justification du {{ precedente.date_depot|date:"d/m/Y" }} a été refusée{% if precedente.commentaire %} : « {{ precedente.commentaire }} »{% endif %}.
+      Vous pouvez en déposer une nouvelle.
+    </div>
+  {% endif %}
+  <div class="card"><div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% include "_formulaire.html" %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-ent">Envoyer</button>
+        <a href="{% url 'absences:mes_absences' %}" class="btn btn-outline-secondary">Annuler</a>
+      </div>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% autoescape off %}Bonjour {{ user.get_full_name|default:user.username }},
+
+Vous avez demandé à réinitialiser le mot de passe de votre compte ENT ENSIASD ({{ user.username }}).
+Pour choisir un nouveau mot de passe, ouvrez le lien suivant :
+
+{{ protocol }}://{{ domain }}{% url 'reinitialiser_mot_de_passe' uidb64=uid token=token %}
+
+Ce lien ne peut être utilisé qu'une fois. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.
+
+Le service de scolarité – ENSIASD Taroudant
+{% endautoescape %}

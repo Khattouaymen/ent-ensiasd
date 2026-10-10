@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titre %}Importer des étudiants{% endblock %}
+{% block contenu %}
+<div class="row justify-content-center"><div class="col-lg-9">
+  <h1 class="h3 mb-1">Importer des étudiants</h1>
+  <p class="text-muted mb-4">Créez en une fois les comptes d'une promotion à partir d'un fichier CSV.</p>
+
+  {% if comptes %}
+    <div class="card mb-4 border-success">
+      <div class="card-body">
+        <h2 class="h5"><i class="bi bi-check-circle text-success me-1"></i>{{ comptes|length }} compte(s) créé(s) – {{ classe }}</h2>
+        <div class="alert alert-warning small mb-3">
+          <strong>Téléchargez maintenant les identifiants :</strong> les mots de passe provisoires ne seront plus jamais affichés.
+          Chaque étudiant devra choisir un nouveau mot de passe à sa première connexion.
+        </div>
+        <a class="btn btn-ent mb-3" download="identifiants_{{ classe.filiere.code }}_{{ classe.annee_universitaire|cut:'/' }}.csv"
+           href="data:text/csv;charset=utf-8;base64,{{ csv_base64 }}"><i class="bi bi-download me-1"></i>Télécharger les identifiants (CSV)</a>
+        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+          <thead class="table-light"><tr><th>Nom</th><th>Prénom</th><th>CNE</th><th>Groupe</th><th>Identifiant</th></tr></thead>
+          <tbody>
+            {% for etudiant, mot_de_passe in comptes %}
+              <tr><td>{{ etudiant.last_name }}</td><td>{{ etudiant.first_name }}</td><td>{{ etudiant.cne }}</td><td>{{ etudiant.groupe.nom|default:"—" }}</td><td><code>{{ etudiant.username }}</code></td></tr>
+            {% endfor %}
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if erreurs %}
+    <div class="alert alert-danger">
+      <strong>Aucun compte n'a été créé</strong> : corrigez les lignes suivantes puis importez à nouveau le fichier.
+      <ul class="mb-0 mt-2 small">
+        {% for numero, message in erreurs %}<li>Ligne {{ numero }} : {{ message }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="card"><div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% include "_formulaire.html" %}
+      <div class="d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-ent"><i class="bi bi-upload me-1"></i>Importer</button>
+        <a href="{% url 'modele_import' %}" class="btn btn-outline-secondary"><i class="bi bi-filetype-csv me-1"></i>Télécharger un modèle</a>
+      </div>
+    </form>
+  </div></div>
+  <p class="small text-muted mt-3">
+    L'identifiant de chaque étudiant est son CNE en minuscules. L'import est « tout ou rien » :
+    si une seule ligne est incorrecte (CNE déjà utilisé, groupe inconnu…), aucun compte n'est créé.
+  </p>
+</div></div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titre %}Cours, TD et TP{% endblock %}
+{% block contenu %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <h1 class="h3 mb-0">{% if user.est_enseignant %}Mes ressources déposées{% else %}Cours, TD et TP{% endif %}</h1>
+  {% if user.est_enseignant %}
+    <a href="{% url 'ressources:deposer' %}" class="btn btn-ent"><i class="bi bi-upload me-1"></i>Déposer un support</a>
+  {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-3" role="search">
+  <div class="col-12 col-md-5">
+    <label for="q" class="visually-hidden">Rechercher</label>
+    <input type="search" id="q" name="q" value="{{ request.GET.q }}" class="form-control" placeholder="Rechercher un titre, une matière…">
+  </div>
+  <div class="col-sm-6 col-md-3">
+    <label for="matiere" class="visually-hidden">Matière</label>
+    <select id="matiere" name="matiere" class="form-select" onchange="this.form.submit()">
+      <option value="">Toutes les matières</option>
+      {% for m in matieres %}<option value="{{ m.pk }}"{% if matiere_choisie == m.pk|stringformat:"d" %} selected{% endif %}>{{ m.nom }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-sm-6 col-md-2">
+    <label for="type" class="visually-hidden">Type</label>
+    <select id="type" name="type" class="form-select" onchange="this.form.submit()">
+      <option value="">Cours, TD et TP</option>
+      {% for valeur, libelle in types %}<option value="{{ valeur }}"{% if type_choisi == valeur %} selected{% endif %}>{{ libelle }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-auto"><button class="btn btn-outline-secondary">Filtrer</button></div>
+</form>
+
+<div class="card"><ul class="list-group list-group-flush">
+  {% for r in page %}
+    <li class="list-group-item d-flex flex-wrap gap-2 justify-content-between align-items-center">
+      <div>
+        <span class="badge text-bg-light me-1">{{ r.get_type_display }}</span>
+        <span class="fw-semibold">{{ r.titre }}</span>
+        <div class="small text-muted">{{ r.matiere }} · {{ r.deposee_par }} · {{ r.date_depot|date:"d/m/Y" }}</div>
+        {% if r.description %}<div class="small mt-1">{{ r.description }}</div>{% endif %}
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'ressources:telecharger' r.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-download me-1"></i>Télécharger</a>
+        {% if user.est_admin or r.deposee_par_id == user.pk %}
+        <form method="post" action="{% url 'ressources:supprimer' r.pk %}" onsubmit="return confirm('Supprimer cette ressource ?');">{% csrf_token %}
+          <button class="btn btn-sm btn-outline-danger" aria-label="Supprimer"><i class="bi bi-trash"></i></button>
+        </form>
+        {% endif %}
+      </div>
+    </li>
+  {% empty %}
+    <li class="list-group-item text-muted">Aucune ressource pour le moment.</li>
+  {% endfor %}
+</ul></div>
+{% include "_pagination.html" %}
+{% endblock %}

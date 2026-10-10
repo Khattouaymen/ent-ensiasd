@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titre %}Faire l'appel{% endblock %}
+{% block contenu %}
+<h1 class="h3 mb-1">Faire l'appel</h1>
+<p class="text-muted mb-4">Choisissez une séance{% if user.est_admin %} (toutes les séances de l'établissement){% else %} de votre emploi du temps{% endif %}.</p>
+
+{% if rattrapages %}
+<h2 class="h5">Séances de rattrapage</h2>
+<div class="list-group mb-4">
+  {% for s in rattrapages %}
+    <a href="{% url 'absences:appel' s.pk %}" class="list-group-item list-group-item-action seance seance-{{ s.type }}">
+      <div class="d-flex justify-content-between">
+        <span class="fw-semibold">{{ s.date_unique|date:"l j F"|capfirst }} · {{ s.heure_debut|time:"H:i" }} – {{ s.heure_fin|time:"H:i" }}</span>
+        <span class="badge text-bg-warning">Rattrapage</span>
+      </div>
+      <div>{{ s.matiere }}</div>
+      <div class="small text-muted">{{ s.classe }}{% if s.groupe %} · {{ s.groupe.nom }}{% endif %} · <i class="bi bi-geo-alt"></i> {{ s.salle }}</div>
+    </a>
+  {% endfor %}
+</div>
+<h2 class="h5">Séances hebdomadaires</h2>
+{% endif %}
+
+<div class="row g-3">
+  {% for jour, seances in jours %}{% if seances %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">{{ jour }}</div>
+      <div class="list-group list-group-flush">
+        {% for s in seances %}
+          <a href="{% url 'absences:appel' s.pk %}" class="list-group-item list-group-item-action seance seance-{{ s.type }}">
+            <div class="d-flex justify-content-between">
+              <span class="fw-semibold">{{ s.heure_debut|time:"H:i" }} – {{ s.heure_fin|time:"H:i" }}</span>
+              <span class="badge text-bg-light">{{ s.get_type_display }}</span>
+            </div>
+            <div>{{ s.matiere }}</div>
+            <div class="small text-muted">{{ s.classe }}{% if s.groupe %} · {{ s.groupe.nom }}{% endif %} · <i class="bi bi-geo-alt"></i> {{ s.salle }}</div>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}{% endfor %}
+</div>
+{% if not nb_seances %}<div class="alert alert-info">Aucune séance ne vous est attribuée dans l'emploi du temps.</div>{% endif %}
+{% endblock %}
