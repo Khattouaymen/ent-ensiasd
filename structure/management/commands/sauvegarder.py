@@ -27,6 +27,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if connection.vendor != "sqlite":
             raise CommandError("Cette commande sauvegarde une base SQLite. Pour un autre moteur, utilisez son outil (pg_dump…).")
+        if connection.in_atomic_block:
+            # La transaction tiendrait le verrou d'écriture (mode IMMEDIATE) : la copie attendrait indéfiniment.
+            raise CommandError("La sauvegarde ne peut pas être lancée à l'intérieur d'une transaction.")
 
         dossier = Path(settings.DOSSIER_SAUVEGARDES)
         dossier.mkdir(parents=True, exist_ok=True)

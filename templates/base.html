@@ -85,5 +85,16 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Formulaires marqués « data-envoi-unique » : le bouton est désactivé après le premier clic
+  // (pas de double envoi), puis réactivé si l'on revient sur la page avec « Précédent ».
+  function boutonsEnvoi(actifs) {
+    document.querySelectorAll("form[data-envoi-unique] [type=submit]").forEach(function (b) { b.disabled = !actifs; });
+  }
+  document.querySelectorAll("form[data-envoi-unique]").forEach(function (form) {
+    form.addEventListener("submit", function () { setTimeout(function () { boutonsEnvoi(false); }); });
+  });
+  window.addEventListener("pageshow", function (e) { if (e.persisted) boutonsEnvoi(true); });
+</script>
 </body>
 </html>

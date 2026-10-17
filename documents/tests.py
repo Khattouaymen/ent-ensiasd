@@ -41,6 +41,16 @@ class CycleDeVieDemandeTests(TestCase):
         with self.assertRaises(ValidationError):
             self.demande.changer_statut(DemandeDocument.Statut.ACCEPTEE, self.scolarite)
 
+    def test_deux_agents_traitent_la_meme_demande(self):
+        vue_par_a = DemandeDocument.objects.get(pk=self.demande.pk)
+        vue_par_b = DemandeDocument.objects.get(pk=self.demande.pk)
+        vue_par_a.changer_statut(DemandeDocument.Statut.ACCEPTEE, self.scolarite)
+        with self.assertRaisesMessage(ValidationError, "un autre agent"):
+            vue_par_b.changer_statut(DemandeDocument.Statut.REFUSEE, self.scolarite, "Refus")
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, DemandeDocument.Statut.ACCEPTEE)
+        self.assertEqual(self.etudiant.notifications.count(), 1)
+
 
 @override_settings(MEDIA_ROOT=MEDIA_TEST)
 class DemandesVuesTests(TestCase):

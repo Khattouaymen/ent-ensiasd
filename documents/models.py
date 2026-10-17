@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.urls import reverse
 from django.utils import timezone
 
@@ -66,8 +66,13 @@ class DemandeDocument(models.Model):
     def __str__(self):
         return f"{self.get_type_document_display()} – {self.etudiant} ({self.get_statut_display()})"
 
+    @transaction.atomic
     def changer_statut(self, nouveau_statut, agent, commentaire=""):
-        """Fait évoluer la demande en respectant le cycle de vie et notifie l'étudiant."""
+        """Fait évoluer la demande en respectant le cycle de vie et notifie l'étudiant.
+
+        Le changement est conditionné au statut lu : si deux agents traitent la même demande
+        en même temps, la seconde décision est refusée au lieu d'écraser la première.
+        """
         from notifications.models import Notification
 
         if nouveau_statut not in self.TRANSITIONS[self.statut]:
@@ -75,6 +80,8 @@ class DemandeDocument(models.Model):
                 f"Impossible de passer de « {self.get_statut_display()} » "
                 f"à « {self.Statut(nouveau_statut).label} »."
             )
+        if not DemandeDocument.objects.filter(pk=self.pk, statut=self.statut).update(statut=nouveau_statut):
+            raise ValidationError("Cette demande vient d'être traitée par un autre agent : rechargez la page.")
         self.statut = nouveau_statut
         self.traitee_par = agent
         self.date_traitement = timezone.now()

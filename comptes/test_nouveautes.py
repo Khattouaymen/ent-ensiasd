@@ -8,7 +8,9 @@ from pathlib import Path
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.core.management.base import CommandError
+from django.db import transaction
+from django.test import TestCase, TransactionTestCase, override_settings
 
 from config.donnees_test import creer_etablissement
 
@@ -87,6 +89,13 @@ class MotDePasseTests(TestCase):
         self.assertRedirects(reponse, "/mot-de-passe-oublie/envoye/")
         self.assertEqual(len(mail.outbox), 0)
 
+    def test_trois_e_mails_au_plus_par_heure_et_par_adresse(self):
+        for _ in range(5):
+            reponse = self.client.post("/mot-de-passe-oublie/", {"email": "Nouveau@exemple.ma"})
+            # Même page qu'habituellement : la limite ne révèle rien sur l'adresse
+            self.assertRedirects(reponse, "/mot-de-passe-oublie/envoye/")
+        self.assertEqual(len(mail.outbox), 3)
+
 
 class StatistiquesTests(TestCase):
     @classmethod
@@ -105,7 +114,10 @@ class StatistiquesTests(TestCase):
         self.assertEqual(self.client.get("/statistiques/").status_code, 403)
 
 
-class SauvegardeTests(TestCase):
+class SauvegardeTests(TransactionTestCase):
+    # Hors transaction, comme la commande lancée depuis une console : une transaction ouverte
+    # détiendrait le verrou d'écriture de SQLite et empêcherait la copie de la base.
+
     def test_sauvegarde_et_rotation(self):
         with tempfile.TemporaryDirectory() as dossier, override_settings(
             DOSSIER_SAUVEGARDES=Path(dossier), NB_SAUVEGARDES_CONSERVEES=2, MEDIA_ROOT=Path(dossier) / "media"
@@ -116,3 +128,7 @@ class SauvegardeTests(TestCase):
             self.assertEqual(len(archives), 2)
             with zipfile.ZipFile(archives[-1]) as zf:
                 self.assertIn("db.sqlite3", zf.namelist())
+
+    def test_refusee_dans_une_transaction_au_lieu_de_bloquer(self):
+        with transaction.atomic(), self.assertRaisesMessage(CommandError, "transaction"):
+            call_command("sauvegarder")

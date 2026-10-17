@@ -2,8 +2,8 @@ from collections import defaultdict
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
-from django.db.models import Q
+from django.db import models, transaction
+from django.db.models import Q, Sum
 from django.urls import reverse
 from django.utils import timezone
 
@@ -61,11 +61,13 @@ class Absence(models.Model):
         return f"{self.get_nature_display()} – {self.etudiant} – {self.seance.matiere} le {self.date:%d/%m/%Y}"
 
     def save(self, *args, **kwargs):
-        if self.nature == self.Nature.RETARD:
-            self.duree_heures = 0
-        elif not self.duree_heures:
-            self.duree_heures = self.seance.duree_heures
+        if self.est_retard or not self.duree_heures:
+            self.calculer_duree()
         super().save(*args, **kwargs)
+
+    def calculer_duree(self):
+        """Fige la durée de la séance (0 pour un retard). Appelée par save(), et avant un bulk_create."""
+        self.duree_heures = 0 if self.est_retard else self.seance.duree_heures
 
     def clean(self):
         if self.date and self.seance_id:
@@ -117,9 +119,14 @@ class Absence(models.Model):
 
         lignes = []
         for matiere, valeurs in sorted(totaux.items(), key=lambda kv: kv[0].nom):
-            taux = 100 * valeurs["non_justifiees"] / matiere.volume_horaire if matiere.volume_horaire else 0
+            taux = Absence.taux(valeurs["non_justifiees"], matiere)
             lignes.append({"matiere": matiere, **valeurs, "taux": taux, "alerte": AlerteAbsence.niveau_pour(taux)})
         return lignes
+
+    @staticmethod
+    def taux(heures_non_justifiees, matiere):
+        """Part des heures non justifiées dans le volume horaire de la matière (en %)."""
+        return 100 * heures_non_justifiees / matiere.volume_horaire if matiere.volume_horaire else 0
 
 
 class Justification(models.Model):
@@ -165,17 +172,25 @@ class Justification(models.Model):
     def __str__(self):
         return f"Justification – {self.absence} ({self.get_statut_display()})"
 
+    @transaction.atomic
     def traiter(self, acceptee, agent, commentaire=""):
-        """Accepte ou refuse la justification et met à jour le statut de l'absence."""
+        """Accepte ou refuse la justification et met à jour le statut de l'absence.
+
+        Le passage « en attente » → traitée se fait par une mise à jour conditionnelle : si deux
+        agents valident la même justification en même temps, seul le premier l'emporte.
+        """
         from notifications.models import Notification
 
-        if self.statut != self.Statut.EN_ATTENTE:
+        traitement = {
+            "statut": self.Statut.ACCEPTEE if acceptee else self.Statut.REFUSEE,
+            "traitee_par": agent,
+            "date_traitement": timezone.now(),
+            "commentaire": commentaire,
+        }
+        if not Justification.objects.filter(pk=self.pk, statut=self.Statut.EN_ATTENTE).update(**traitement):
             raise ValidationError("Cette justification a déjà été traitée.")
-        self.statut = self.Statut.ACCEPTEE if acceptee else self.Statut.REFUSEE
-        self.traitee_par = agent
-        self.date_traitement = timezone.now()
-        self.commentaire = commentaire
-        self.save()
+        for champ, valeur in traitement.items():
+            setattr(self, champ, valeur)
 
         self.absence.statut = Absence.Statut.JUSTIFIEE if acceptee else Absence.Statut.NON_JUSTIFIEE
         self.absence.save(update_fields=["statut"])
@@ -236,33 +251,76 @@ class AlerteAbsence(models.Model):
 
     @classmethod
     def verifier(cls, etudiant):
-        """Crée les alertes nouvellement atteintes et prévient l'étudiant et la scolarité."""
+        """Crée les alertes nouvellement atteintes par l'étudiant, toutes matières confondues."""
+        return cls._signaler(
+            [(etudiant, l["matiere"], l["non_justifiees"], l["taux"]) for l in Absence.heures_par_matiere(etudiant)]
+        )
+
+    @classmethod
+    def verifier_apres_appel(cls, matiere, etudiants):
+        """Même vérification pour les absents d'un appel.
+
+        Seule la matière de la séance a pu franchir un seuil : les heures de tous les étudiants
+        sont calculées en une requête, au lieu de recalculer toutes leurs matières un par un.
+        """
+        heures = dict(
+            Absence.objects.filter(
+                etudiant__in=etudiants,
+                seance__matiere=matiere,
+                nature=Absence.Nature.ABSENCE,
+                statut=Absence.Statut.NON_JUSTIFIEE,
+            )
+            .order_by()
+            .values_list("etudiant")
+            .annotate(Sum("duree_heures"))
+        )
+        return cls._signaler(
+            [(e, matiere, heures.get(e.pk, 0), Absence.taux(heures.get(e.pk, 0), matiere)) for e in etudiants]
+        )
+
+    @classmethod
+    def _signaler(cls, situations):
+        """Crée les alertes atteintes et pas encore signalées, et prévient l'étudiant et la scolarité.
+
+        situations : [(étudiant, matière, heures non justifiées, taux), …]. Le nombre de requêtes
+        ne dépend pas du nombre d'étudiants.
+        """
         from notifications.models import Notification
 
-        nouvelles = []
-        for ligne in Absence.heures_par_matiere(etudiant):
-            for niveau, seuil in cls.seuils():
-                if ligne["taux"] < seuil:
-                    continue
-                alerte, creee = cls.objects.get_or_create(
-                    etudiant=etudiant,
-                    matiere=ligne["matiere"],
-                    niveau=niveau,
-                    defaults={"heures_non_justifiees": ligne["non_justifiees"], "taux": ligne["taux"]},
-                )
-                if not creee:
-                    continue
-                nouvelles.append(alerte)
-                libelle = cls.Niveau(niveau).label.lower()
-                Notification.envoyer(
+        atteintes = [
+            (etudiant, matiere, heures, taux, niveau, seuil)
+            for etudiant, matiere, heures, taux in situations
+            for niveau, seuil in cls.seuils()
+            if taux >= seuil
+        ]
+        if not atteintes:
+            return []
+        deja_signalees = set(
+            cls.objects.filter(
+                etudiant__in={a[0].pk for a in atteintes}, matiere__in={a[1].pk for a in atteintes}
+            ).values_list("etudiant_id", "matiere_id", "niveau")
+        )
+        a_signaler = [a for a in atteintes if (a[0].pk, a[1].pk, a[4]) not in deja_signalees]
+        if not a_signaler:
+            return []
+
+        nouvelles, notifications = [], []
+        scolarite = list(Notification.comptes_du_role("SCOLARITE"))
+        for etudiant, matiere, heures, taux, niveau, seuil in a_signaler:
+            nouvelles.append(cls(etudiant=etudiant, matiere=matiere, niveau=niveau, heures_non_justifiees=heures, taux=taux))
+            libelle = cls.Niveau(niveau).label
+            notifications.append(
+                Notification.preparer(
                     etudiant,
-                    f"{cls.Niveau(niveau).label} : {ligne['non_justifiees']:g} h d'absence non justifiées en "
-                    f"{ligne['matiere']} ({ligne['taux']:.0f} % du volume horaire, seuil {seuil} %).",
+                    f"{libelle} : {heures:g} h d'absence non justifiées en "
+                    f"{matiere} ({taux:.0f} % du volume horaire, seuil {seuil} %).",
                     lien=reverse("absences:mes_absences"),
                 )
-                Notification.envoyer_au_role(
-                    "SCOLARITE",
-                    f"{etudiant} a atteint le {libelle} ({seuil} %) en {ligne['matiere']}.",
-                    lien=f"{reverse('absences:par_classe')}?classe={etudiant.classe_id or ''}",
-                )
+            )
+            message = f"{etudiant} a atteint le {libelle.lower()} ({seuil} %) en {matiere}."
+            lien = f"{reverse('absences:par_classe')}?classe={etudiant.classe_id or ''}"
+            notifications += [Notification.preparer(agent, message, lien) for agent in scolarite]
+        # ignore_conflicts : une alerte créée entre-temps par une requête simultanée n'est pas une erreur.
+        cls.objects.bulk_create(nouvelles, ignore_conflicts=True)
+        Notification.objects.bulk_create(notifications)
         return nouvelles

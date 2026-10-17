@@ -103,10 +103,26 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Base de données : SQLite pour le développement et la démonstration.
+# « IMMEDIATE » : une transaction réserve l'écriture dès son début. Deux enregistrements
+# simultanés (appel, justification…) passent alors l'un après l'autre au lieu d'échouer
+# avec « database is locked » ; le second attend au plus « timeout » secondes.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        "OPTIONS": {"transaction_mode": "IMMEDIATE", "timeout": 20},
+    }
+}
+
+# Cache stocké dans la base (table créée par « migrate ») : les compteurs de tentatives de
+# connexion survivent aux redémarrages du site et sont partagés entre ses processus.
+# MAX_ENTRIES élevé : une rafale d'essais sur des identifiants inventés ne doit pas effacer
+# les compteurs existants.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "cache_ent",
+        "OPTIONS": {"MAX_ENTRIES": 10_000},
     }
 }
 

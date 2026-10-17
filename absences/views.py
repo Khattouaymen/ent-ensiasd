@@ -6,7 +6,8 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch, Q
+from django.db import IntegrityError, transaction
+from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -58,6 +59,56 @@ def lire_date(texte, seance):
     return date, seance.empechement(date)
 
 
+def absences_existantes(seance, date):
+    """Absences et retards déjà saisis pour cette séance à cette date, par étudiant."""
+    absences = Absence.objects.filter(seance=seance, date=date).select_related("seance").prefetch_related("justifications")
+    return {a.etudiant_id: a for a in absences}
+
+
+@transaction.atomic
+def enregistrer_appel(seance, date, etudiants, choix, agent):
+    """Enregistre l'appel ; renvoie le nombre d'absences justifiées laissées telles quelles.
+
+    Tout se fait dans une transaction : en cas d'erreur, l'appel n'est pas enregistré à moitié,
+    et deux envois simultanés (double clic) sont traités l'un après l'autre. Les écritures sont
+    groupées : le nombre de requêtes ne dépend pas de l'effectif de la classe.
+    """
+    existantes = absences_existantes(seance, date)
+    a_creer, a_modifier, a_supprimer, absents = [], [], [], []
+    conservees = 0
+    for etudiant in etudiants:
+        choix_etudiant = choix.get(etudiant.pk, PRESENT)
+        absence = existantes.get(etudiant.pk)
+        if absence is not None and absence.justifications.all():
+            # Une absence pour laquelle l'étudiant a déposé un justificatif n'est plus modifiée.
+            if choix_etudiant != ABSENT:
+                conservees += 1
+            continue
+        if choix_etudiant == PRESENT:
+            if absence is not None:
+                a_supprimer.append(absence.pk)
+            continue
+        nature = Absence.Nature.RETARD if choix_etudiant == RETARD else Absence.Nature.ABSENCE
+        if absence is None:
+            absence = Absence(etudiant=etudiant, seance=seance, date=date, nature=nature, saisie_par=agent)
+            absence.calculer_duree()
+            a_creer.append(absence)
+        elif absence.nature != nature:
+            absence.nature = nature
+            absence.calculer_duree()
+            a_modifier.append(absence)
+        if nature == Absence.Nature.ABSENCE:
+            absents.append(etudiant)
+
+    Absence.objects.filter(pk__in=a_supprimer).delete()
+    Absence.objects.bulk_update(a_modifier, ["nature", "duree_heures"])
+    # ignore_conflicts : avec une base qui ne sérialise pas les transactions (PostgreSQL), un double
+    # envoi peut encore tenter de créer une absence que le premier vient d'enregistrer.
+    Absence.objects.bulk_create(a_creer, ignore_conflicts=True)
+    AlerteAbsence.verifier_apres_appel(seance.matiere, absents)
+    return conservees
+
+
 @role_requis("ENSEIGNANT", "ADMIN")
 def appel(request, seance_id):
     """Feuille d'appel d'une séance à une date donnée : présent, absent ou en retard (BF02)."""
@@ -77,47 +128,22 @@ def appel(request, seance_id):
         return redirect(f"{reverse('absences:appel', args=[seance.pk])}?date={date.isoformat()}")
 
     etudiants = list(seance.public().select_related("groupe"))
-    existantes = {
-        a.etudiant_id: a
-        for a in Absence.objects.filter(seance=seance, date=date).prefetch_related("justifications")
-    }
 
     if request.method == "POST":
-        conservees = 0
-        concernes = []
-        for etudiant in etudiants:
-            choix = request.POST.get(f"etudiant_{etudiant.pk}", PRESENT)
-            absence = existantes.get(etudiant.pk)
-            if absence is not None and absence.justifications.all():
-                # Une absence pour laquelle l'étudiant a déposé un justificatif n'est plus modifiée.
-                if choix != ABSENT:
-                    conservees += 1
-                continue
-            if choix == PRESENT:
-                if absence is not None:
-                    absence.delete()
-                continue
-            nature = Absence.Nature.RETARD if choix == RETARD else Absence.Nature.ABSENCE
-            if absence is None:
-                Absence.objects.create(etudiant=etudiant, seance=seance, date=date, nature=nature, saisie_par=request.user)
-            elif absence.nature != nature:
-                absence.nature = nature
-                absence.duree_heures = 0  # recalculée par save() selon la nature
-                absence.save()
-            if nature == Absence.Nature.ABSENCE:
-                concernes.append(etudiant)
-
-        for etudiant in concernes:
-            AlerteAbsence.verifier(etudiant)
-
-        enregistrees = Absence.objects.filter(seance=seance, date=date)
-        nb_absents = enregistrees.filter(nature=Absence.Nature.ABSENCE).count()
-        nb_retards = enregistrees.filter(nature=Absence.Nature.RETARD).count()
-        messages.success(request, f"Appel du {date:%d/%m/%Y} enregistré : {nb_absents} absent(s), {nb_retards} retard(s).")
+        choix = {e.pk: request.POST.get(f"etudiant_{e.pk}", PRESENT) for e in etudiants}
+        conservees = enregistrer_appel(seance, date, etudiants, choix, request.user)
+        nb = Absence.objects.filter(seance=seance, date=date).aggregate(
+            absents=Count("pk", filter=Q(nature=Absence.Nature.ABSENCE)),
+            retards=Count("pk", filter=Q(nature=Absence.Nature.RETARD)),
+        )
+        messages.success(
+            request, f"Appel du {date:%d/%m/%Y} enregistré : {nb['absents']} absent(s), {nb['retards']} retard(s)."
+        )
         if conservees:
             messages.warning(request, f"{conservees} absence(s) déjà justifiée(s) par l'étudiant n'ont pas été modifiées.")
         return redirect(f"{reverse('absences:appel', args=[seance.pk])}?date={date.isoformat()}")
 
+    existantes = absences_existantes(seance, date)
     lignes = []
     for etudiant in etudiants:
         absence = existantes.get(etudiant.pk)
@@ -171,7 +197,15 @@ def justifier(request, absence_id):
     if request.method == "POST" and form.is_valid():
         justification = form.save(commit=False)
         justification.absence = absence
-        justification.save()
+        try:
+            with transaction.atomic():
+                justification.save()
+        except IntegrityError:
+            # Double envoi : une justification vient d'être enregistrée pour cette absence
+            # (une seule peut être en attente). La pièce jointe du doublon est supprimée.
+            justification.piece_jointe.delete(save=False)
+            messages.info(request, "Cette absence a déjà une justification en cours ou acceptée.")
+            return redirect("absences:mes_absences")
         Notification.envoyer_au_role(
             "SCOLARITE",
             f"Nouvelle justification d'absence : {request.user} ({absence.seance.matiere}, {absence.date:%d/%m/%Y}).",

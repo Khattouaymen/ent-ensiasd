@@ -1,3 +1,5 @@
+from unittest import mock
+
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import connection
@@ -112,6 +114,14 @@ class ProtectionConnexionTests(TestCase):
         for _ in range(5):
             self.connexion("faux")
         self.assertEqual(self.connexion("BonMotDePasse!2026", ip="10.0.0.2").status_code, 302)
+
+    def test_le_blocage_court_depuis_le_premier_echec(self):
+        # 2e échec 10 minutes après le 1er : le compteur expire 5 minutes plus tard, pas 15
+        with mock.patch("comptes.forms.time") as horloge, mock.patch("comptes.forms.cache", wraps=cache) as faux_cache:
+            horloge.time.side_effect = [1000.0, 1600.0]
+            self.connexion("faux")
+            self.connexion("faux")
+        self.assertEqual([appel.kwargs["timeout"] for appel in faux_cache.set.call_args_list], [900, 300])
 
     def test_une_connexion_reussie_remet_le_compteur_a_zero(self):
         for _ in range(4):

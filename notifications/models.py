@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils.text import Truncator
 
 
 class Notification(models.Model):
@@ -20,13 +21,33 @@ class Notification(models.Model):
         return f"{self.destinataire} : {self.message}"
 
     @classmethod
+    def preparer(cls, destinataire, message, lien=""):
+        """Notification non enregistrée (pour bulk_create).
+
+        Le message est tronqué à la taille du champ : il contient des noms de matière ou des
+        motifs saisis librement, et une base comme PostgreSQL refuserait un texte trop long.
+        """
+        longueur = cls._meta.get_field("message").max_length
+        return cls(destinataire=destinataire, message=Truncator(message).chars(longueur), lien=lien)
+
+    @classmethod
     def envoyer(cls, destinataire, message, lien=""):
-        return cls.objects.create(destinataire=destinataire, message=message, lien=lien)
+        notification = cls.preparer(destinataire, message, lien)
+        notification.save()
+        return notification
+
+    @classmethod
+    def envoyer_a(cls, destinataires, message, lien=""):
+        """Envoie la même notification à plusieurs comptes, en une seule requête."""
+        cls.objects.bulk_create([cls.preparer(u, message, lien) for u in destinataires])
 
     @classmethod
     def envoyer_au_role(cls, role, message, lien=""):
         """Notifie tous les comptes actifs ayant ce rôle (ex. : toute la scolarité)."""
+        cls.envoyer_a(cls.comptes_du_role(role), message, lien)
+
+    @staticmethod
+    def comptes_du_role(role):
         from comptes.models import Utilisateur
 
-        destinataires = Utilisateur.objects.filter(role=role, is_active=True)
-        cls.objects.bulk_create([cls(destinataire=u, message=message, lien=lien) for u in destinataires])
+        return Utilisateur.objects.filter(role=role, is_active=True)
