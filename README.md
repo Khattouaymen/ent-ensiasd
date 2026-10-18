@@ -1,7 +1,8 @@
 # ENT ENSIASD – Système de gestion d'un établissement scolaire
 
 Projet MGSI S3 (2026/2027) – ENSIASD Taroudant.
-Plateforme web : absences, ressources pédagogiques, demandes de documents, classes et emplois du temps.
+Plateforme web : absences, ressources pédagogiques, demandes de documents, classes et emplois du temps,
+annonces, examens et devoirs en ligne.
 
 **Technologies :** Python 3.11 (dernière version 3.11.x) · Django 5.2 LTS · SQLite · Bootstrap 5
 
@@ -39,13 +40,16 @@ Une application Django par module du dossier de cadrage :
 |---|---|---|
 | `comptes/` | Utilisateur avec rôle, connexion, tableau de bord, décorateur `role_requis` | BF01, BF16, US17 |
 | `structure/` | Filières, niveaux, classes, groupes, matières, salles, affectations | BF11, BF12 |
-| `emplois/` | Séances + **détection des conflits** (`Seance.conflits()`) | BF13, BF14, BF15 |
+| `emplois/` | Séances + **détection des conflits** (`Seance.conflits()`), abonnement iCalendar (`ical.py`) | BF13, BF14, BF15 |
 | `ressources/` | Cours, TD, TP filtrés par filière et niveau | BF06, BF07 |
 | `documents/` | Demandes de documents et cycle de vie des statuts | BF08 – BF10 |
-| `absences/` | Appel par séance, total d'heures, justifications, export CSV | BF02 – BF05, US18 |
+| `absences/` | Appel par séance, total d'heures, justifications, export CSV, suivi par l'enseignant, relevé PDF (`releve.py`) | BF02 – BF05, US18 |
+| `annonces/` | Annonces pour tout l'établissement, une filière ou une classe | — |
+| `evaluations/` | Calendrier des examens, devoirs à rendre en ligne, rappels | — |
 | `notifications/` | Notifications internes | — |
 
-Autres dossiers : `config/` (paramètres, URL, validation et téléchargement des fichiers, données de test), `templates/` (pages HTML), `static/` (CSS).
+Autres dossiers : `config/` (paramètres, URL, validation et téléchargement des fichiers, données de test), `templates/` (pages HTML),
+`static/` (thème `css/ent.css`, police Plus Jakarta Sans hébergée sur le site, logos).
 
 ## Fonctionnalités
 
@@ -53,10 +57,10 @@ Toutes les user stories du backlog (US01 à US18) sont réalisées, ainsi que le
 
 | Rôle | Pages |
 |---|---|
-| **Étudiant** | Tableau de bord · Emploi du temps de la semaine (annulations, rattrapages, jours fériés) · Cours/TD/TP de sa filière et de son niveau · Mes absences (heures par matière, retards, alertes de seuil) + justification, y compris après un refus · Demandes de documents + téléchargement · Notifications · Mon compte |
-| **Enseignant** | Tableau de bord · Emploi du temps · Faire l'appel (présent / absent / retard, séances hebdomadaires et rattrapages) · Déposer / supprimer ses supports |
-| **Scolarité** | Demandes de documents (attestation de scolarité générée en PDF, ajout du fichier après coup) · Justifications · Absences par classe + alertes + export CSV · Statistiques · Import CSV des étudiants · Emplois du temps des classes |
-| **Administrateur** | Administration `/admin/` (structure, comptes, affectations, séances, annulations, jours non travaillés) · Statistiques · Import CSV · Absences par classe · Appel pour toute séance |
+| **Étudiant** | Tableau de bord (séances du jour, échéances, annonces) · Emploi du temps de la semaine (annulations, rattrapages, jours fériés, examens) + abonnement depuis Google Agenda, Outlook ou le téléphone · Examens et rendus · Dépôt des devoirs · Cours/TD/TP de sa filière et de son niveau · Mes absences (heures par matière, retards, alertes de seuil) + justification, y compris après un refus, + relevé PDF · Demandes de documents + téléchargement · Annonces · Notifications · Mon compte |
+| **Enseignant** | Tableau de bord (étudiants en alerte, échéances) · Emploi du temps + abonnement · Faire l'appel (présent / absent / retard, séances hebdomadaires et rattrapages) · Suivi des absences de ses étudiants, matière par matière · Programmer un examen · Publier un devoir, consulter et télécharger les rendus (ZIP) · Annonces à ses classes · Déposer / supprimer ses supports |
+| **Scolarité** | Demandes de documents (attestation de scolarité générée en PDF, ajout du fichier après coup) · Justifications · Absences par classe + alertes + export CSV + relevé PDF de chaque étudiant · Calendrier des examens · Annonces · Statistiques · Import CSV des étudiants · Emplois du temps des classes |
+| **Administrateur** | Administration `/admin/` (structure, comptes, affectations, séances, annulations, jours non travaillés) · Statistiques · Import CSV · Absences par classe + relevés PDF · Appel pour toute séance · Examens · Annonces |
 
 ### Règles importantes
 
@@ -81,6 +85,32 @@ Toutes les user stories du backlog (US01 à US18) sont réalisées, ainsi que le
 - Avertissement à 10 % et seuil critique à 25 % du volume horaire de la matière, en heures non justifiées.
 - Chaque seuil franchi est notifié une seule fois à l'étudiant et à la scolarité.
 
+**Annonces** (`/annonces/`)
+- La scolarité et l'administrateur publient pour tout l'établissement, une filière ou une classe ; un enseignant, pour l'une de ses classes.
+- Chaque annonce est notifiée à ses destinataires ; une annonce « importante » reste en tête de liste.
+  Après sa date de fin (facultative), elle disparaît des listes.
+
+**Examens, devoirs et rappels** (`/evaluations/`)
+- Un examen ou un devoir vise une classe entière ou l'un de ses groupes, dans une matière ; un enseignant ne choisit que parmi ses affectations.
+- Les étudiants concernés sont notifiés à la publication, puis rappelés deux jours avant l'échéance (une seule fois). Pour un devoir,
+  seuls ceux qui n'ont encore rien déposé reçoivent le rappel.
+- Les rappels partent à l'ouverture des tableaux de bord (pas de tâche planifiée sur la formule gratuite de PythonAnywhere) ;
+  `python manage.py envoyer_rappels` fait la même chose depuis une tâche planifiée.
+- Un nouveau dépôt remplace le précédent. Après la date limite, le dépôt est refusé, sauf si l'enseignant accepte les retards
+  (le rendu est alors marqué « en retard »). Mêmes formats et même taille maximale que les ressources (`TAILLE_MAX_RESSOURCE_MO`).
+
+**Abonnement à l'emploi du temps**
+- Chaque étudiant ou enseignant crée, sur sa page « Emploi du temps », un lien secret vers un flux iCalendar (séances qui ont lieu,
+  examens, dates limites des devoirs). « Changer de lien » rend l'ancien inutilisable (lien partagé par erreur).
+- Les heures sont écrites en UTC à partir de la base des fuseaux horaires du serveur : celle-ci doit être à jour pour suivre
+  les changements d'heure du Maroc (paquet `tzdata` de `requirements.txt`, et base du système).
+
+**Suivi des absences et relevé**
+- L'enseignant voit, pour chaque matière et classe qui lui sont affectées, les heures d'absence de chaque étudiant (toutes séances
+  de la matière confondues) et son niveau d'alerte ; les plus absents en tête.
+- Le relevé PDF reprend la page « Mes absences » : bilan par matière et détail chronologique. Il est informatif et ne remplace pas
+  une attestation signée.
+
 **Import CSV des étudiants** (`/comptes/importer/`)
 - Colonnes `nom;prenom;cne;email;groupe` (un modèle est téléchargeable sur la page). L'identifiant est le CNE en minuscules.
 - Import « tout ou rien » : la moindre erreur (CNE en double, groupe inconnu…) n'enregistre aucun compte.
@@ -92,7 +122,7 @@ Toutes les user stories du backlog (US01 à US18) sont réalisées, ainsi que le
 python manage.py sauvegarder
 ```
 
-Crée `sauvegardes/sauvegarde_ent_<date>.zip` (base + fichiers déposés) et ne garde que les 14 dernières.
+Crée `sauvegardes/sauvegarde_ent_<date>.zip` (base + fichiers déposés, rendus de devoirs compris) et ne garde que les 14 dernières.
 Pour une sauvegarde automatique chaque nuit sous Windows (à adapter au chemin du projet) :
 
 ```bash
@@ -106,9 +136,10 @@ Après la sauvegarde, `python manage.py purger_notifications` supprime les notif
 
 ## Pistes d'amélioration
 
-- Déploiement (PythonAnywhere, Render…) avec `DJANGO_DEBUG=0`, une vraie `DJANGO_SECRET_KEY` et `collectstatic`.
 - Notifications par e-mail en plus des notifications internes.
-- Gestion des notes et des examens (hors périmètre du dossier de cadrage).
+- Gestion des notes (hors périmètre du dossier de cadrage).
+
+Le déploiement sur PythonAnywhere est décrit dans `deploiement/DEPLOIEMENT.md`.
 
 ## Tests
 
