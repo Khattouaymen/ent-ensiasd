@@ -209,3 +209,13 @@ class DevoirsTests(TestCase):
         self.client.post(f"{self.url}supprimer/")
         self.assertFalse(Devoir.objects.exists())
         self.assertFalse(default_storage.exists(fichier))
+
+    def test_suppression_groupee_depuis_l_administration(self):
+        self.rendre(self.d.etu1)
+        fichier = Rendu.objects.get().fichier.name
+        self.client.force_login(self.d.admin)
+        self.client.post(
+            "/admin/evaluations/devoir/", {"action": "delete_selected", "_selected_action": [self.devoir.pk], "post": "yes"}
+        )
+        self.assertFalse(Devoir.objects.exists())
+        self.assertFalse(default_storage.exists(fichier))

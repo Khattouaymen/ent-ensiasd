@@ -41,3 +41,8 @@ class DevoirAdmin(admin.ModelAdmin):
     def delete_model(self, request, devoir):
         devoir.supprimer_fichiers()
         super().delete_model(request, devoir)
+
+    def delete_queryset(self, request, devoirs):  # action « Supprimer les devoirs sélectionnés »
+        for devoir in devoirs:
+            devoir.supprimer_fichiers()
+        super().delete_queryset(request, devoirs)
