@@ -1,8 +1,10 @@
 {% extends "base.html" %}
+{% load static %}
 {% block titre %}Nouveau mot de passe{% endblock %}
 {% block contenu %}
 <div class="page-connexion d-flex align-items-center justify-content-center">
-  <div class="card shadow-sm carte-connexion w-100"><div class="card-body p-4">
+  <div class="card carte-connexion w-100"><div class="card-body p-4 p-sm-5">
+    <img src="{% static 'img/logo_ensiasd.jpg' %}" alt="École Nationale Supérieure de l'Intelligence Artificielle et Sciences des Données – Taroudant" class="logo-connexion mb-4">
     {% if validlink %}
       <h1 class="h4 mb-3">Choisissez un nouveau mot de passe</h1>
       <form method="post">

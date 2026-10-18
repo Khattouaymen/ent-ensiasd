@@ -31,7 +31,7 @@
           <a href="{% url 'absences:appel' s.pk %}" class="list-group-item list-group-item-action seance seance-{{ s.type }}">
             <div class="d-flex justify-content-between">
               <span class="fw-semibold">{{ s.heure_debut|time:"H:i" }} – {{ s.heure_fin|time:"H:i" }}</span>
-              <span class="badge text-bg-light">{{ s.get_type_display }}</span>
+              <span class="badge type-seance">{{ s.get_type_display }}</span>
             </div>
             <div>{{ s.matiere }}</div>
             <div class="small text-muted">{{ s.classe }}{% if s.groupe %} · {{ s.groupe.nom }}{% endif %} · <i class="bi bi-geo-alt"></i> {{ s.salle }}</div>

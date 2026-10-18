@@ -31,7 +31,10 @@ from .templatetags.ent import heures as format_heures
 
 @login_required
 def tableau_de_bord(request):
-    """Page d'accueil après connexion, adaptée au rôle de l'utilisateur (BF01)."""
+    """Page d'accueil après connexion, adaptée au rôle de l'utilisateur (BF01).
+
+    Indicateurs : (libellé, valeur, icône Bootstrap Icons, couleur de la pastille).
+    """
     user = request.user
     aujourdhui = timezone.localdate()
     contexte = {
@@ -44,43 +47,64 @@ def tableau_de_bord(request):
 
     if user.est_admin:
         contexte["stats"] = [
-            ("Filières", Filiere.objects.count()),
-            ("Classes", Classe.objects.count()),
-            ("Étudiants", Utilisateur.objects.filter(role=Utilisateur.Role.ETUDIANT).count()),
-            ("Enseignants", Utilisateur.objects.filter(role=Utilisateur.Role.ENSEIGNANT).count()),
-            ("Séances planifiées", Seance.objects.count()),
-            ("Alertes critiques", AlerteAbsence.objects.filter(niveau=AlerteAbsence.Niveau.CRITIQUE).count()),
+            ("Filières", Filiere.objects.count(), "diagram-3", "primaire"),
+            ("Classes", Classe.objects.count(), "people", "turquoise"),
+            ("Étudiants", Utilisateur.objects.filter(role=Utilisateur.Role.ETUDIANT).count(), "mortarboard", "violet"),
+            ("Enseignants", Utilisateur.objects.filter(role=Utilisateur.Role.ENSEIGNANT).count(), "person-workspace", "accent"),
+            ("Séances planifiées", Seance.objects.count(), "calendar-week", "primaire"),
+            (
+                "Alertes critiques",
+                AlerteAbsence.objects.filter(niveau=AlerteAbsence.Niveau.CRITIQUE).count(),
+                "exclamation-triangle",
+                "danger",
+            ),
         ]
     elif user.est_scolarite:
         contexte["stats"] = [
-            ("Demandes en attente", DemandeDocument.objects.filter(statut=DemandeDocument.Statut.EN_ATTENTE).count()),
-            ("Justifications à traiter", Justification.objects.filter(statut=Justification.Statut.EN_ATTENTE).count()),
+            (
+                "Demandes en attente",
+                DemandeDocument.objects.filter(statut=DemandeDocument.Statut.EN_ATTENTE).count(),
+                "file-earmark-text",
+                "primaire",
+            ),
+            (
+                "Justifications à traiter",
+                Justification.objects.filter(statut=Justification.Statut.EN_ATTENTE).count(),
+                "patch-check",
+                "accent",
+            ),
             (
                 "Étudiants en alerte",
                 AlerteAbsence.objects.values("etudiant").distinct().count(),
+                "exclamation-triangle",
+                "danger",
             ),
         ]
     elif user.est_enseignant:
         contexte["stats"] = [
-            ("Séances par semaine", user.seances.filter(date_unique__isnull=True).count()),
-            ("Classes", user.seances.values("classe").distinct().count()),
-            ("Ressources déposées", user.ressources_deposees.count()),
+            ("Séances par semaine", user.seances.filter(date_unique__isnull=True).count(), "calendar-week", "primaire"),
+            ("Classes", user.seances.values("classe").distinct().count(), "people", "turquoise"),
+            ("Ressources déposées", user.ressources_deposees.count(), "journal-arrow-up", "violet"),
         ]
     elif user.est_etudiant:
         heures = Absence.heures_par_matiere(user)
         contexte["stats"] = [
-            ("Heures d'absence", format_heures(sum(l["total"] for l in heures))),
-            ("Dont non justifiées", format_heures(sum(l["non_justifiees"] for l in heures))),
-            ("Retards", sum(l["retards"] for l in heures)),
+            ("Heures d'absence", format_heures(sum(l["total"] for l in heures)), "clock-history", "primaire"),
+            ("Dont non justifiées", format_heures(sum(l["non_justifiees"] for l in heures)), "exclamation-circle", "danger"),
+            ("Retards", sum(l["retards"] for l in heures), "hourglass-split", "accent"),
             (
                 "Demandes en cours",
                 user.demandes_documents.filter(
                     statut__in=[DemandeDocument.Statut.EN_ATTENTE, DemandeDocument.Statut.ACCEPTEE]
                 ).count(),
+                "file-earmark-text",
+                "turquoise",
             ),
             (
                 "Nouvelles ressources (7 jours)",
                 Ressource.visibles_par(user).filter(date_depot__gte=timezone.now() - timedelta(days=7)).count(),
+                "journal-plus",
+                "violet",
             ),
         ]
 
