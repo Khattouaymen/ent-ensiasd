@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import content_disposition_header
 
+from comptes.models import Utilisateur
 from comptes.permissions import role_requis
 from config.formulaires import paginer, telecharger
 from emplois.models import Seance
@@ -23,6 +24,7 @@ from structure.models import Classe
 
 from .forms import JustificationForm
 from .models import Absence, AlerteAbsence, Justification
+from .releve import generer_releve
 
 # --- Saisie des absences et retards (enseignant, administrateur) -------------------------------
 
@@ -221,6 +223,19 @@ def mes_absences(request):
     )
 
 
+def reponse_releve(etudiant):
+    """Relevé d'absences en PDF, affiché dans le navigateur. À n'appeler qu'après le contrôle des droits."""
+    reponse = HttpResponse(generer_releve(etudiant), content_type="application/pdf")
+    nom = f"releve_absences_{etudiant.username}_{timezone.localdate():%Y-%m-%d}.pdf"
+    reponse["Content-Disposition"] = content_disposition_header(False, nom)
+    return reponse
+
+
+@role_requis("ETUDIANT")
+def mon_releve(request):
+    return reponse_releve(request.user)
+
+
 @role_requis("ETUDIANT")
 def justifier(request, absence_id):
     """Dépôt d'une justification avec pièce jointe (BF04), y compris après un refus."""
@@ -367,6 +382,11 @@ def par_classe(request):
         lignes.sort(key=lambda l: (-len(l["critiques"]), -l["non_justifiees"], l["etudiant"].last_name))
 
     return render(request, "absences/par_classe.html", {"classes": classes, "classe": classe, "lignes": lignes})
+
+
+@role_requis("SCOLARITE", "ADMIN")
+def releve_etudiant(request, etudiant_id):
+    return reponse_releve(get_object_or_404(Utilisateur.objects.filter(role=Utilisateur.Role.ETUDIANT), pk=etudiant_id))
 
 
 @role_requis("SCOLARITE", "ADMIN")
