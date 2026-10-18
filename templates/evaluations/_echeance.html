@@ -1,0 +1,38 @@
+{% comment %}Une échéance : {% include "evaluations/_echeance.html" with e=element avec_date=True %} (avec_date hors du calendrier){% endcomment %}
+{% load ent %}
+{% with o=e.objet %}
+<li class="list-group-item echeance">
+  {% if e.type == "examen" %}
+    <span class="icone-ton ton-danger" aria-hidden="true"><i class="bi bi-pencil-square"></i></span>
+    <div class="flex-grow-1">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <span class="fw-semibold">{{ o.intitule }}</span>
+        <span class="badge text-bg-danger">{{ o.get_type_display }}</span>
+      </div>
+      <div class="small text-muted">
+        {% if avec_date %}<span class="fw-semibold">{{ e.dans_jours|echeance }}</span> · {% endif %}<i class="bi bi-clock"></i> {{ o.heure_debut|time:"H:i" }}{% if o.heure_fin %}–{{ o.heure_fin|time:"H:i" }}{% endif %}
+        {% if o.salle %}· <i class="bi bi-geo-alt"></i> {{ o.salle }}{% endif %} · {{ o.matiere }}{% if not user.est_etudiant %} · {{ o.public_libelle }}{% elif o.groupe %} · {{ o.groupe.nom }}{% endif %}
+      </div>
+      {% if o.consignes %}<div class="small mt-1">{{ o.consignes }}</div>{% endif %}
+      {% if avec_actions and e.supprimable %}
+        <form method="post" action="{% url 'evaluations:supprimer_examen' o.pk %}" class="mt-2" onsubmit="return confirm('Supprimer cet examen ?')">
+          {% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Supprimer</button>
+        </form>
+      {% endif %}
+    </div>
+  {% else %}
+    <span class="icone-ton ton-violet" aria-hidden="true"><i class="bi bi-journal-arrow-up"></i></span>
+    <div class="flex-grow-1 position-relative">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <a href="{{ o.get_absolute_url }}" class="fw-semibold stretched-link">{{ o.titre }}</a>
+        {% if user.est_etudiant %}
+          {% if e.rendu %}<span class="badge text-bg-success"><i class="bi bi-check2 me-1"></i>Rendu</span>
+          {% elif o.accepte_les_rendus %}<span class="badge text-bg-warning">À rendre</span>
+          {% else %}<span class="badge text-bg-danger">Non rendu</span>{% endif %}
+        {% else %}<span class="badge text-bg-primary">Date limite</span>{% endif %}
+      </div>
+      <div class="small text-muted">{% if avec_date %}<span class="fw-semibold">{{ e.dans_jours|echeance }}</span> · {% endif %}<i class="bi bi-hourglass-split"></i> Avant {{ e.quand|time:"H:i" }} · {{ o.matiere }}{% if not user.est_etudiant %} · {{ o.public_libelle }}{% endif %}</div>
+    </div>
+  {% endif %}
+</li>
+{% endwith %}

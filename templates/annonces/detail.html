@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titre %}{{ annonce.titre }}{% endblock %}
+{% block contenu %}
+<div class="row justify-content-center"><div class="col-lg-9">
+  <a href="{% url 'annonces:liste' %}" class="small"><i class="bi bi-arrow-left"></i> Toutes les annonces</a>
+  <div class="mt-3">{% include "annonces/_carte.html" %}</div>
+  {% if peut_supprimer %}
+    <form method="post" action="{% url 'annonces:supprimer' annonce.pk %}" class="mt-3" onsubmit="return confirm('Supprimer cette annonce ?')">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Supprimer l'annonce</button>
+    </form>
+  {% endif %}
+</div></div>
+{% endblock %}

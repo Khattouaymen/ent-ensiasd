@@ -1,9 +1,11 @@
-{% load static %}<!doctype html>
+{% load static ent %}<!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b2545">
   <title>{% block titre %}ENT{% endblock %} · ENT ENSIASD</title>
+  <link rel="preload" href="{% static 'fonts/plus-jakarta-sans-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"
@@ -13,78 +15,116 @@
 </head>
 <body>
 {% if user.is_authenticated %}
-<nav class="navbar navbar-expand-lg navbar-dark bg-ent">
-  <div class="container">
-    <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="{% url 'tableau_de_bord' %}">
-      <img src="{% static 'img/embleme_ensiasd.png' %}" alt="" class="embleme">ENT ENSIASD
-    </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Menu">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="menu">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link" href="{% url 'tableau_de_bord' %}">Tableau de bord</a></li>
-        {% if user.est_etudiant %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'emplois:mon_emploi_du_temps' %}">Emploi du temps</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'ressources:liste' %}">Cours, TD, TP</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'absences:mes_absences' %}">Absences</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'documents:liste' %}">Documents</a></li>
-        {% elif user.est_enseignant %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'emplois:mon_emploi_du_temps' %}">Emploi du temps</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'absences:choisir_seance' %}">Appel</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'ressources:liste' %}">Mes ressources</a></li>
-        {% elif user.est_scolarite %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'documents:liste' %}">Demandes</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'absences:justifications' %}">Justifications</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'absences:par_classe' %}">Absences</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'statistiques' %}">Statistiques</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'emplois:emploi_du_temps_classe' %}">Emplois du temps</a></li>
-        {% elif user.est_admin %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'emplois:emploi_du_temps_classe' %}">Emplois du temps</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'absences:par_classe' %}">Absences</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'statistiques' %}">Statistiques</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Administration</a></li>
+<div class="ent-app">
+  <aside class="ent-menu offcanvas-lg offcanvas-start" id="menu" tabindex="-1" aria-label="Menu principal">
+   <div class="ent-menu-interieur">
+    <div class="d-flex align-items-start justify-content-between">
+      <a class="ent-marque" href="{% url 'tableau_de_bord' %}">
+        <img src="{% static 'img/embleme_ensiasd.png' %}" alt="" class="embleme">
+        <span>ENT ENSIASD<small>Espace numérique de travail</small></span>
+      </a>
+      <button type="button" class="btn-close btn-close-white d-lg-none mt-2" data-bs-dismiss="offcanvas" data-bs-target="#menu" aria-label="Fermer le menu"></button>
+    </div>
+
+    <nav aria-label="Navigation principale">
+      {% lien_menu "tableau_de_bord" "grid-1x2" "Tableau de bord" %}
+      {% lien_menu "annonces:liste" "megaphone" "Annonces" "annonces:detail" "annonces:nouvelle" %}
+      {% if user.est_etudiant %}
+        <p class="ent-menu-titre">Ma scolarité</p>
+        {% lien_menu "emplois:mon_emploi_du_temps" "calendar-week" "Emploi du temps" %}
+        {% lien_menu "evaluations:calendrier" "calendar-event" "Examens et rendus" %}
+        {% lien_menu "evaluations:devoirs" "journal-arrow-up" "Devoirs" "evaluations:devoir" %}
+        {% lien_menu "ressources:liste" "journal-text" "Cours, TD et TP" %}
+        {% lien_menu "absences:mes_absences" "person-x" "Mes absences" "absences:justifier" %}
+        {% lien_menu "documents:liste" "file-earmark-text" "Documents" "documents:nouvelle" %}
+      {% elif user.est_enseignant %}
+        <p class="ent-menu-titre">Enseignement</p>
+        {% lien_menu "emplois:mon_emploi_du_temps" "calendar-week" "Emploi du temps" %}
+        {% lien_menu "absences:choisir_seance" "clipboard-check" "Faire l'appel" "absences:appel" %}
+        {% lien_menu "absences:suivi" "clipboard-data" "Suivi des absences" %}
+        {% lien_menu "evaluations:calendrier" "calendar-event" "Examens et rendus" "evaluations:nouvel_examen" %}
+        {% lien_menu "evaluations:devoirs" "journal-check" "Devoirs" "evaluations:devoir" "evaluations:nouveau_devoir" %}
+        {% lien_menu "ressources:liste" "journal-text" "Mes ressources" "ressources:deposer" %}
+      {% else %}
+        <p class="ent-menu-titre">Scolarité</p>
+        {% if user.est_scolarite %}
+          {% lien_menu "documents:liste" "file-earmark-check" "Demandes" "documents:traiter" %}
+          {% lien_menu "absences:justifications" "patch-check" "Justifications" "absences:traiter_justification" %}
         {% endif %}
-      </ul>
-      <ul class="navbar-nav align-items-lg-center">
-        <li class="nav-item">
-          <a class="nav-link position-relative" href="{% url 'notifications:liste' %}" aria-label="Notifications">
-            <i class="bi bi-bell"></i>
-            {% if nb_notifications_non_lues %}<span class="badge rounded-pill bg-danger">{{ nb_notifications_non_lues }}</span>{% endif %}
-            <span class="d-lg-none ms-1">Notifications</span>
-          </a>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-person-circle me-1"></i>{{ user }}
+        {% lien_menu "absences:par_classe" "people" "Absences par classe" %}
+        {% if user.est_admin %}{% lien_menu "absences:choisir_seance" "clipboard-check" "Faire l'appel" "absences:appel" %}{% endif %}
+        {% lien_menu "emplois:emploi_du_temps_classe" "calendar-week" "Emplois du temps" %}
+        {% lien_menu "evaluations:calendrier" "calendar-event" "Examens et rendus" "evaluations:nouvel_examen" %}
+        {% lien_menu "statistiques" "graph-up" "Statistiques" %}
+        {% lien_menu "importer_etudiants" "person-plus" "Importer des étudiants" %}
+        {% if user.est_admin %}
+          <p class="ent-menu-titre">Établissement</p>
+          {% lien_menu "admin:index" "building-gear" "Administration" %}
+        {% endif %}
+      {% endif %}
+      <p class="ent-menu-titre">Compte</p>
+      {% lien_menu "notifications:liste" "bell" "Notifications" compteur=nb_notifications_non_lues %}
+      {% lien_menu "mon_compte" "person-circle" "Mon compte" "changer_mot_de_passe" %}
+    </nav>
+
+    <div class="ent-menu-pied">École Nationale Supérieure de l'IA et Sciences des Données · Taroudant</div>
+   </div>
+  </aside>
+
+  <div class="ent-principal">
+    <header class="ent-barre">
+      <button type="button" class="bouton-icone d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#menu" aria-controls="menu" aria-label="Ouvrir le menu">
+        <i class="bi bi-list"></i>
+      </button>
+      <a class="ent-barre-marque d-lg-none" href="{% url 'tableau_de_bord' %}"><img src="{% static 'img/embleme_ensiasd.png' %}" alt="" class="embleme">ENT</a>
+      {% now "l j F Y" as aujourdhui %}<span class="ent-barre-date d-none d-md-inline">{{ aujourdhui|capfirst }}</span>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <a class="bouton-icone" href="{% url 'notifications:liste' %}" aria-label="Notifications{% if nb_notifications_non_lues %} ({{ nb_notifications_non_lues }} non lues){% endif %}">
+          <i class="bi bi-bell"></i>
+          {% if nb_notifications_non_lues %}<span class="badge rounded-pill bg-danger">{{ nb_notifications_non_lues }}</span>{% endif %}
+        </a>
+        <div class="dropdown">
+          <a class="ent-compte" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="ent-avatar" aria-hidden="true">{{ user|initiales }}</span>
+            <span class="d-none d-sm-block"><span class="nom d-block">{{ user }}</span><span class="role">{{ user.get_role_display }}</span></span>
+            <i class="bi bi-chevron-down small text-muted"></i>
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li><span class="dropdown-item-text small text-muted">{{ user.get_role_display }}</span></li>
+            <li><a class="dropdown-item" href="{% url 'mon_compte' %}"><i class="bi bi-person me-2"></i>Mon compte</a></li>
+            <li><a class="dropdown-item" href="{% url 'changer_mot_de_passe' %}"><i class="bi bi-key me-2"></i>Changer mon mot de passe</a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="{% url 'mon_compte' %}"><i class="bi bi-person me-1"></i>Mon compte</a></li>
-            <li><a class="dropdown-item" href="{% url 'changer_mot_de_passe' %}"><i class="bi bi-key me-1"></i>Changer mon mot de passe</a></li>
             <li>
               <form method="post" action="{% url 'deconnexion' %}">{% csrf_token %}
-                <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right me-1"></i>Se déconnecter</button>
+                <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Se déconnecter</button>
               </form>
             </li>
           </ul>
-        </li>
-      </ul>
-    </div>
-  </div>
-</nav>
-{% endif %}
+        </div>
+      </div>
+    </header>
 
-<main class="container py-4">
-  {% for message in messages %}
-    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
-      {{ message }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
-    </div>
-  {% endfor %}
-  {% block contenu %}{% endblock %}
+    <main class="ent-contenu">
+      {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+        </div>
+      {% endfor %}
+{% else %}
+<main class="ent-public">
+  {% if messages %}<div class="container pt-3">{% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %}" role="alert">{{ message }}</div>
+  {% endfor %}</div>{% endif %}
+{% endif %}
+{% block contenu %}{% endblock %}
+{% if user.is_authenticated %}
+    </main>
+    <footer class="ent-pied">ENT ENSIASD · Université Ibn Zohr</footer>
+  </div>
+</div>
+{% else %}
 </main>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

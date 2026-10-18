@@ -22,7 +22,7 @@
 <table class="table align-middle mb-0">
   <thead class="table-light"><tr>
     <th>Étudiant</th><th>Groupe</th><th class="text-end">Absences</th><th class="text-end">Heures</th>
-    <th class="text-end">Non justifiées</th><th class="text-end">Retards</th><th>Alertes</th>
+    <th class="text-end">Non justifiées</th><th class="text-end">Retards</th><th>Alertes</th><th><span class="visually-hidden">Relevé</span></th>
   </tr></thead>
   <tbody>
   {% for l in lignes %}
@@ -38,9 +38,13 @@
         {% for a in l.avertissements %}<span class="badge text-bg-warning me-1" title="{{ a.taux|floatformat:0 }} % du volume horaire">{{ a.matiere }}</span>{% endfor %}
         {% if not l.critiques and not l.avertissements %}—{% endif %}
       </td>
+      <td class="text-end">
+        <a href="{% url 'absences:releve_etudiant' l.etudiant.pk %}" class="btn btn-sm btn-outline-secondary text-nowrap" target="_blank" rel="noopener"
+           title="Relevé d'absences de {{ l.etudiant.get_full_name|default:l.etudiant.username }} (PDF)"><i class="bi bi-file-earmark-pdf"></i> Relevé</a>
+      </td>
     </tr>
   {% empty %}
-    <tr><td colspan="7" class="text-muted">Aucun étudiant dans cette classe.</td></tr>
+    <tr><td colspan="8" class="text-muted">Aucun étudiant dans cette classe.</td></tr>
   {% endfor %}
   </tbody>
 </table>

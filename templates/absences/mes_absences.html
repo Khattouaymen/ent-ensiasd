@@ -2,17 +2,23 @@
 {% load ent %}
 {% block titre %}Mes absences{% endblock %}
 {% block contenu %}
-<h1 class="h3 mb-4">Mes absences</h1>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <h1 class="h3 mb-0">Mes absences</h1>
+  <a href="{% url 'absences:mon_releve' %}" class="btn btn-outline-primary" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>Relevé d'absences (PDF)</a>
+</div>
 
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3"><div class="card stat h-100"><div class="card-body">
-    <div class="valeur">{{ total|heures }}</div><div class="text-muted small">Heures d'absence</div>
+    <span class="icone-ton ton-primaire" aria-hidden="true"><i class="bi bi-clock-history"></i></span>
+    <div><div class="valeur">{{ total|heures }}</div><div class="text-muted small">Heures d'absence</div></div>
   </div></div></div>
   <div class="col-6 col-md-3"><div class="card stat h-100"><div class="card-body">
-    <div class="valeur">{{ total_non_justifiees|heures }}</div><div class="text-muted small">Non justifiées</div>
+    <span class="icone-ton ton-danger" aria-hidden="true"><i class="bi bi-exclamation-circle"></i></span>
+    <div><div class="valeur">{{ total_non_justifiees|heures }}</div><div class="text-muted small">Non justifiées</div></div>
   </div></div></div>
   <div class="col-6 col-md-3"><div class="card stat h-100"><div class="card-body">
-    <div class="valeur">{{ total_retards }}</div><div class="text-muted small">Retard(s)</div>
+    <span class="icone-ton ton-accent" aria-hidden="true"><i class="bi bi-hourglass-split"></i></span>
+    <div><div class="valeur">{{ total_retards }}</div><div class="text-muted small">Retard(s)</div></div>
   </div></div></div>
 </div>
 

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titre %}{{ devoir.titre }}{% endblock %}
+{% block contenu %}
+<a href="{% url 'evaluations:devoirs' %}" class="small"><i class="bi bi-arrow-left"></i> Mes devoirs</a>
+<div class="row g-4 mt-1">
+  <div class="col-lg-7">
+    <h1 class="h3 mb-1">{{ devoir.titre }}</h1>
+    <p class="text-muted">{{ devoir.matiere }} · {{ devoir.enseignant }}</p>
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6 text-muted text-uppercase small fw-bold">Consignes</h2>
+      <div class="contenu-annonce">{{ devoir.consignes|urlize|linebreaksbr }}</div>
+      {% if devoir.fichier_consignes %}
+        <a href="{% url 'evaluations:sujet' devoir.pk %}" class="btn btn-sm btn-outline-primary mt-3"><i class="bi bi-download me-1"></i>Télécharger le sujet</a>
+      {% endif %}
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-body">
+      <div class="d-flex align-items-center gap-3">
+        <span class="icone-ton {% if devoir.est_depasse %}ton-danger{% else %}ton-accent{% endif %}" aria-hidden="true"><i class="bi bi-hourglass-split"></i></span>
+        <div>
+          <div class="small text-muted">Date limite</div>
+          <div class="fw-bold">{{ devoir.date_limite|date:"l j F Y à H:i"|capfirst }}</div>
+          {% if devoir.est_depasse %}<div class="small text-danger">Dépassée{% if devoir.accepte_retard %} · les rendus en retard sont acceptés{% endif %}</div>
+          {% else %}<div class="small text-muted">Encore {{ devoir.date_limite|timeuntil }}</div>{% endif %}
+        </div>
+      </div>
+    </div></div>
+
+    <div class="card"><div class="card-body">
+      <h2 class="h5">Mon rendu</h2>
+      {% if rendu %}
+        <div class="alert alert-{% if rendu.en_retard %}warning{% else %}success{% endif %} small">
+          <i class="bi bi-check2-circle me-1"></i>Déposé le {{ rendu.date_depot|date:"j F à H:i" }}{% if rendu.en_retard %} (en retard){% endif %} :
+          <a href="{% url 'evaluations:fichier_rendu' rendu.pk %}" class="fw-semibold">{{ rendu.nom_fichier }}</a>
+        </div>
+      {% endif %}
+      {% if devoir.accepte_les_rendus %}
+        <form method="post" enctype="multipart/form-data" data-envoi-unique>
+          {% csrf_token %}
+          {% include "_formulaire.html" %}
+          <button type="submit" class="btn btn-ent w-100"><i class="bi bi-upload me-1"></i>{% if rendu %}Remplacer mon rendu{% else %}Déposer mon travail{% endif %}</button>
+        </form>
+      {% elif not rendu %}
+        <p class="text-danger mb-0"><i class="bi bi-x-circle me-1"></i>La date limite est dépassée : ce devoir n'accepte plus de rendu.</p>
+      {% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

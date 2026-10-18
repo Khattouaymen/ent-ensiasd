@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titre %}{{ titre }}{% endblock %}
+{% block contenu %}
+<div class="row justify-content-center"><div class="col-lg-8">
+  <h1 class="h3 mb-1">{{ titre }}</h1>
+  <p class="text-muted mb-4">Les étudiants concernés sont prévenus par une notification, puis par un rappel deux jours avant l'échéance.</p>
+  {% if form.fields.affectation and not form.fields.affectation.queryset.exists %}
+    <div class="alert alert-warning">Aucune matière ne vous est affectée. Contactez l'administration.</div>
+  {% endif %}
+  <div class="card"><div class="card-body">
+    <form method="post"{% if fichiers %} enctype="multipart/form-data"{% endif %} data-envoi-unique>
+      {% csrf_token %}
+      {% include "_formulaire.html" %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-ent"><i class="bi bi-check2 me-1"></i>Enregistrer</button>
+        <a href="{% if fichiers %}{% url 'evaluations:devoirs' %}{% else %}{% url 'evaluations:calendrier' %}{% endif %}" class="btn btn-outline-secondary">Annuler</a>
+      </div>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}

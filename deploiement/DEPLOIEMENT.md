@@ -70,9 +70,23 @@ Puis **Reload** dans l'onglet « Web ».
 `collectstatic` est indispensable à chaque mise à jour : en production, les fichiers statiques portent une empreinte
 dans leur nom (`ent.3f1a9c….css`), et une page qui utilise un fichier absent de `staticfiles/` renvoie une erreur 500.
 
+`migrate` l'est aussi dès qu'une mise à jour ajoute des migrations (par exemple les applications `annonces` et
+`evaluations`, ou le lien d'abonnement au calendrier) : sans elle, les nouvelles pages renvoient une erreur 500.
+
+## Rappels des examens et des devoirs
+
+Sans tâche planifiée, les rappels (deux jours avant un examen ou une date limite) partent quand un utilisateur ouvre
+son tableau de bord. Avec un compte payant, ajoutez une tâche quotidienne (onglet « Tasks ») :
+
+```bash
+cd ~/ent-ensiasd && DJANGO_DEBUG=0 DJANGO_SECRET_KEY_FILE=~/.ent_cle_secrete DJANGO_ALLOWED_HOSTS=<identifiant>.pythonanywhere.com ~/.virtualenvs/ent/bin/python manage.py envoyer_rappels
+```
+
 ## Limites de la formule gratuite
 
 - Le site est désactivé s'il n'est pas prolongé **chaque mois** (bouton *Run until 1 month from today*, onglet « Web ») ; PythonAnywhere envoie un e-mail de rappel une semaine avant.
-- Pas de tâches planifiées : les sauvegardes se lancent à la main (voir plus haut).
+- Pas de tâches planifiées : les sauvegardes se lancent à la main (voir plus haut), les rappels partent à l'ouverture des tableaux de bord.
+- Espace disque limité : les rendus de devoirs s'ajoutent aux justificatifs et aux supports de cours. Supprimer les devoirs
+  des années passées (avec leurs rendus) après les avoir sauvegardés libère de la place.
 - 100 secondes de calcul par jour pour les consoles (le site lui-même n'est pas concerné).
 - Accès Internet sortant limité : l'envoi d'e-mails (mot de passe oublié) ne fonctionne qu'avec un serveur SMTP autorisé par PythonAnywhere.

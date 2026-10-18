@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block titre %}Devoirs{% endblock %}
+{% block contenu %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <h1 class="h3 mb-0">Devoirs</h1>
+  {% if user.est_enseignant %}<a class="btn btn-ent" href="{% url 'evaluations:nouveau_devoir' %}"><i class="bi bi-journal-plus me-1"></i>Nouveau devoir</a>{% endif %}
+</div>
+<div class="card"><div class="table-responsive">
+<table class="table align-middle mb-0">
+  <thead class="table-light"><tr><th>Devoir</th><th>Classe</th><th>Date limite</th><th style="min-width: 11rem">Rendus</th></tr></thead>
+  <tbody>
+  {% for l in lignes %}{% with d=l.devoir %}
+    <tr>
+      <td><a href="{{ d.get_absolute_url }}" class="fw-semibold">{{ d.titre }}</a><div class="small text-muted">{{ d.matiere }}</div></td>
+      <td>{{ d.public_libelle }}</td>
+      <td>{{ d.date_limite|date:"d/m/Y H:i" }}{% if d.est_depasse %} <span class="badge text-bg-secondary">Terminé</span>{% endif %}</td>
+      <td>
+        <div class="d-flex align-items-center gap-2">
+          <div class="progress flex-grow-1" style="height: .5rem" role="progressbar" aria-label="Rendus" aria-valuenow="{{ d.nb_rendus }}" aria-valuemin="0" aria-valuemax="{{ l.attendus }}">
+            <div class="progress-bar" style="width: {% widthratio d.nb_rendus l.attendus|default:1 100 %}%"></div>
+          </div>
+          <span class="small fw-semibold text-nowrap">{{ d.nb_rendus }} / {{ l.attendus }}</span>
+        </div>
+      </td>
+    </tr>
+  {% endwith %}{% empty %}
+    <tr><td colspan="4" class="text-muted text-center py-4">Aucun devoir pour le moment.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div></div>
+{% endblock %}

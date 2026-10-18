@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load ent %}
+{% block titre %}Examens et rendus{% endblock %}
+{% block contenu %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h3 mb-0">Examens et rendus</h1>
+  <div class="d-flex flex-wrap gap-2">
+    {% if user.est_enseignant %}<a class="btn btn-outline-primary" href="{% url 'evaluations:nouveau_devoir' %}"><i class="bi bi-journal-plus me-1"></i>Nouveau devoir</a>{% endif %}
+    {% if peut_programmer %}<a class="btn btn-ent" href="{% url 'evaluations:nouvel_examen' %}"><i class="bi bi-calendar-plus me-1"></i>Programmer un examen</a>{% endif %}
+  </div>
+</div>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+  <ul class="nav nav-pills">
+    <li class="nav-item"><a class="nav-link{% if not passees %} active{% endif %}" href="{% querystring passees=None %}">À venir</a></li>
+    <li class="nav-item"><a class="nav-link{% if passees %} active{% endif %}" href="{% querystring passees=1 %}">Passés</a></li>
+  </ul>
+  {% if classes %}
+  <form method="get" class="ms-md-auto">
+    {% if passees %}<input type="hidden" name="passees" value="1">{% endif %}
+    <label for="classe" class="visually-hidden">Classe</label>
+    <select id="classe" name="classe" class="form-select" onchange="this.form.submit()">
+      <option value="">Toutes les classes</option>
+      {% for c in classes %}<option value="{{ c.pk }}"{% if c == classe %} selected{% endif %}>{{ c }}</option>{% endfor %}
+    </select>
+  </form>
+  {% endif %}
+</div>
+
+{% regroup elements by date as jours %}
+{% for jour in jours %}
+  <h2 class="titre-section{% if not forloop.first %} mt-4{% endif %}">
+    {{ jour.grouper|date:"l j F"|capfirst }}
+    <span class="badge {% if jour.list.0.dans_jours == 0 %}text-bg-danger{% elif jour.list.0.dans_jours > 0 and jour.list.0.dans_jours <= 2 %}text-bg-warning{% else %}text-bg-light{% endif %}">{{ jour.list.0.dans_jours|echeance }}</span>
+  </h2>
+  <div class="card"><ul class="list-group list-group-flush echeances">
+    {% for e in jour.list %}{% include "evaluations/_echeance.html" with avec_actions=True %}{% endfor %}
+  </ul></div>
+{% empty %}
+  <div class="card"><div class="card-body text-center text-muted py-5">
+    <i class="bi bi-calendar-check fs-2 d-block mb-2"></i>{% if passees %}Aucun examen ni rendu passé.{% else %}Aucun examen ni rendu à venir.{% endif %}
+  </div></div>
+{% endfor %}
+{% endblock %}

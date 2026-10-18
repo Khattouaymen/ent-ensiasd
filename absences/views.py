@@ -8,12 +8,13 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Prefetch, Q
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import content_disposition_header
 
+from comptes.models import Utilisateur
 from comptes.permissions import role_requis
 from config.formulaires import paginer, telecharger
 from emplois.models import Seance
@@ -23,6 +24,7 @@ from structure.models import Classe
 
 from .forms import JustificationForm
 from .models import Absence, AlerteAbsence, Justification
+from .releve import generer_releve
 
 # --- Saisie des absences et retards (enseignant, administrateur) -------------------------------
 
@@ -160,6 +162,45 @@ def appel(request, seance_id):
     )
 
 
+# --- Suivi des absences dans ses matières (enseignant) ----------------------------------------
+
+
+@role_requis("ENSEIGNANT")
+def suivi(request):
+    """Assiduité des étudiants dans chacune des matières de l'enseignant, alertes en tête."""
+    affectations = list(
+        request.user.enseignements.select_related("matiere", "classe__filiere", "classe__niveau").order_by(
+            "classe__filiere__code", "classe__niveau__ordre", "matiere__nom"
+        )
+    )
+    choix = request.GET.get("affectation", "")
+    affectation = next((a for a in affectations if str(a.pk) == choix), None) if choix else None
+    if choix and affectation is None:
+        raise Http404("Affectation inconnue.")
+    affectation = affectation or (affectations[0] if affectations else None)
+
+    lignes = Absence.suivi_matiere(affectation.matiere, affectation.classe) if affectation else []
+    en_alerte = [l for l in lignes if l["alerte"]]
+    seulement_alertes = request.GET.get("filtre") == "alertes"
+    return render(
+        request,
+        "absences/suivi.html",
+        {
+            "affectations": affectations,
+            "affectation": affectation,
+            "lignes": en_alerte if seulement_alertes else lignes,
+            "seulement_alertes": seulement_alertes,
+            "nb_etudiants": len(lignes),
+            "nb_alertes": len(en_alerte),
+            "nb_critiques": sum(1 for l in en_alerte if l["alerte"] == AlerteAbsence.Niveau.CRITIQUE),
+            "total": sum(l["total"] for l in lignes),
+            "total_non_justifiees": sum(l["non_justifiees"] for l in lignes),
+            "total_retards": sum(l["retards"] for l in lignes),
+            "seuils": AlerteAbsence.seuils(),
+        },
+    )
+
+
 # --- Espace étudiant -------------------------------------------------------------------------
 
 
@@ -180,6 +221,19 @@ def mes_absences(request):
             "seuils": AlerteAbsence.seuils(),
         },
     )
+
+
+def reponse_releve(etudiant):
+    """Relevé d'absences en PDF, affiché dans le navigateur. À n'appeler qu'après le contrôle des droits."""
+    reponse = HttpResponse(generer_releve(etudiant), content_type="application/pdf")
+    nom = f"releve_absences_{etudiant.username}_{timezone.localdate():%Y-%m-%d}.pdf"
+    reponse["Content-Disposition"] = content_disposition_header(False, nom)
+    return reponse
+
+
+@role_requis("ETUDIANT")
+def mon_releve(request):
+    return reponse_releve(request.user)
 
 
 @role_requis("ETUDIANT")
@@ -328,6 +382,11 @@ def par_classe(request):
         lignes.sort(key=lambda l: (-len(l["critiques"]), -l["non_justifiees"], l["etudiant"].last_name))
 
     return render(request, "absences/par_classe.html", {"classes": classes, "classe": classe, "lignes": lignes})
+
+
+@role_requis("SCOLARITE", "ADMIN")
+def releve_etudiant(request, etudiant_id):
+    return reponse_releve(get_object_or_404(Utilisateur.objects.filter(role=Utilisateur.Role.ETUDIANT), pk=etudiant_id))
 
 
 @role_requis("SCOLARITE", "ADMIN")

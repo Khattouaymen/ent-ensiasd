@@ -90,7 +90,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"
         integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
 <script>
-(function () {
+// Graphiques dessinés une fois la police chargée (sinon le texte des axes change de police)
+document.fonts.ready.then(function () {
   if (!window.Chart) { return; }
   var style = getComputedStyle(document.querySelector(".viz-root"));
   var couleur = function (nom) { return style.getPropertyValue(nom).trim(); };
@@ -170,6 +171,6 @@
       }
     }
   });
-})();
+});
 </script>
 {% endblock %}

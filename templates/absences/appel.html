@@ -4,8 +4,8 @@
 <a href="{% url 'absences:choisir_seance' %}" class="small"><i class="bi bi-arrow-left"></i> Autre séance</a>
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 my-3">
   <div>
-    <h1 class="h3 mb-1">{{ seance.matiere }} <span class="badge text-bg-light align-middle">{{ seance.get_type_display }}</span>
-      {% if seance.est_rattrapage %}<span class="badge text-bg-warning align-middle">Rattrapage</span>{% endif %}</h1>
+    <h1 class="h3 mb-1">{{ seance.matiere }} <span class="badge type-seance seance-{{ seance.type }} align-middle fs-6">{{ seance.get_type_display }}</span>
+      {% if seance.est_rattrapage %}<span class="badge text-bg-warning align-middle fs-6">Rattrapage</span>{% endif %}</h1>
     <p class="text-muted mb-0">
       {{ seance.classe }}{% if seance.groupe %} · {{ seance.groupe.nom }}{% endif %} ·
       {% if seance.est_rattrapage %}{{ seance.date_unique|date:"d/m/Y" }}{% else %}{{ seance.get_jour_display }}{% endif %}
@@ -42,7 +42,7 @@
             <span class="small text-muted">{% if e.groupe %}· {{ e.groupe.nom }}{% endif %}{% if e.cne %} · {{ e.cne }}{% endif %}</span>
             {% if l.verrouillee %}<span class="badge text-bg-secondary ms-1" title="L'étudiant a déposé un justificatif">Justificatif déposé</span>{% endif %}
           </div>
-          <div class="btn-group btn-group-sm" role="group" aria-label="Présence de {{ e.first_name }} {{ e.last_name }}">
+          <div class="btn-group btn-group-sm choix-presence" role="group" aria-label="Présence de {{ e.first_name }} {{ e.last_name }}">
             <input type="radio" class="btn-check" name="etudiant_{{ e.pk }}" id="p{{ e.pk }}" value="present"{% if l.choix == "present" %} checked{% endif %}{% if l.verrouillee or erreur_date %} disabled{% endif %}>
             <label class="btn btn-outline-success" for="p{{ e.pk }}">Présent</label>
             <input type="radio" class="btn-check" name="etudiant_{{ e.pk }}" id="a{{ e.pk }}" value="absent"{% if l.choix == "absent" %} checked{% endif %}{% if l.verrouillee or erreur_date %} disabled{% endif %}>

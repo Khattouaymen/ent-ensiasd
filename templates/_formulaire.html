@@ -4,10 +4,18 @@
 {% endfor %}
 {% for champ in form.hidden_fields %}{{ champ }}{% endfor %}
 {% for champ in form.visible_fields %}
+  {% if champ.widget_type == "checkbox" %}
+  <div class="form-check mb-3">
+    {{ champ }}
+    <label for="{{ champ.id_for_label }}" class="form-check-label">{{ champ.label }}</label>
+    {% if champ.help_text %}<div class="form-text mt-0">{{ champ.help_text|safe }}</div>{% endif %}
+  </div>
+  {% else %}
   <div class="mb-3">
     <label for="{{ champ.id_for_label }}" class="form-label">{{ champ.label }}{% if champ.field.required %} <span class="text-danger">*</span>{% endif %}</label>
     {{ champ }}
     {% for erreur in champ.errors %}<div class="text-danger small mt-1">{{ erreur }}</div>{% endfor %}
     {% if champ.help_text %}<div class="form-text">{{ champ.help_text|safe }}</div>{% endif %}
   </div>
+  {% endif %}
 {% endfor %}

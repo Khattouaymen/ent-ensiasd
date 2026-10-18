@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titre %}Nouvelle annonce{% endblock %}
+{% block contenu %}
+<div class="row justify-content-center"><div class="col-lg-8">
+  <h1 class="h3 mb-1">Nouvelle annonce</h1>
+  <p class="text-muted mb-4">Les destinataires sont prévenus par une notification dès la publication.</p>
+  {% if not form.fields.destinataires.choices %}
+    <div class="alert alert-warning">Aucune classe ne vous est affectée : vous ne pouvez pas encore publier d'annonce.</div>
+  {% endif %}
+  <div class="card"><div class="card-body">
+    <form method="post" data-envoi-unique>
+      {% csrf_token %}
+      {% include "_formulaire.html" %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-ent"><i class="bi bi-send me-1"></i>Publier</button>
+        <a href="{% url 'annonces:liste' %}" class="btn btn-outline-secondary">Annuler</a>
+      </div>
+    </form>
+  </div></div>
+</div></div>
+{% endblock %}

@@ -1,12 +1,20 @@
+import secrets
+from collections import defaultdict
 from datetime import date as Date
 from datetime import timedelta
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.shortcuts import get_object_or_404, render
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from comptes.permissions import role_requis
+from evaluations.models import Examen
+from evaluations.views import examens_visibles
 from structure.models import Classe
 
 from .models import AnnulationSeance, JourNonTravaille, Seance
@@ -62,6 +70,20 @@ def planning(seances, du, au):
     return jours
 
 
+def ajouter_examens(jours, examens):
+    """Ajoute à chaque jour ses examens (« examens ») et ses créneaux triés par heure (« creneaux ») :
+    [("seance", séance, annulation ou None) ou ("examen", examen, None), …]."""
+    par_jour = defaultdict(list)
+    for examen in examens.select_related("matiere", "salle", "groupe"):
+        par_jour[examen.date].append(examen)
+    for jour in jours:
+        jour["examens"] = [] if jour["fermeture"] else par_jour.get(jour["date"], [])
+        creneaux = [(s.heure_debut, "seance", s, annulation) for s, annulation in jour["seances"]]
+        creneaux += [(e.heure_debut, "examen", e, None) for e in jour["examens"]]
+        jour["creneaux"] = [c[1:] for c in sorted(creneaux, key=lambda c: c[0])]
+    return jours
+
+
 def semaine_demandee(request):
     try:
         return lundi_de(Date.fromisoformat(request.GET.get("semaine", "")))
@@ -90,16 +112,53 @@ def mon_emploi_du_temps(request):
     else:
         titre = "Mon emploi du temps"
     lundi = semaine_demandee(request)
+    samedi = lundi + timedelta(days=5)
+    jours = planning(seances_de(user), lundi, samedi)
+    ajouter_examens(jours, examens_visibles(user).filter(date__range=(lundi, samedi)))
+    lien_calendrier = None
+    if user.jeton_calendrier:
+        lien_calendrier = request.build_absolute_uri(reverse("emplois:flux_ics", args=[user.jeton_calendrier]))
     return render(
         request,
         "emplois/emploi_du_temps.html",
         {
             "titre": titre,
-            "jours": planning(seances_de(user), lundi, lundi + timedelta(days=5)),
+            "jours": jours,
             "sans_classe": user.est_etudiant and not user.classe_id,
+            "abonnement": user.est_etudiant or user.est_enseignant,
+            "lien_calendrier": lien_calendrier,
             **contexte_semaine(lundi),
         },
     )
+
+
+@login_required
+@require_POST
+def abonnement(request):
+    """Crée (ou remplace) l'adresse secrète du flux iCalendar : l'ancienne cesse de fonctionner."""
+    deja = bool(request.user.jeton_calendrier)
+    request.user.jeton_calendrier = secrets.token_urlsafe(32)
+    request.user.save(update_fields=["jeton_calendrier"])
+    if deja:
+        messages.success(request, "Nouveau lien créé : l'ancien ne fonctionne plus. Abonnez à nouveau votre agenda.")
+    else:
+        messages.success(request, "Lien d'abonnement créé : ajoutez-le à votre agenda.")
+    return redirect("emplois:mon_emploi_du_temps")
+
+
+def flux_ics(request, jeton):
+    """Flux iCalendar, sans connexion (les applications d'agenda ne peuvent pas s'identifier) :
+    l'adresse secrète tient lieu d'identification."""
+    from comptes.models import Utilisateur
+
+    from .ical import calendrier_ics
+
+    utilisateur = get_object_or_404(Utilisateur, jeton_calendrier=jeton, is_active=True)
+    contenu = calendrier_ics(utilisateur, timezone.localdate(), request.build_absolute_uri)
+    reponse = HttpResponse(contenu, content_type="text/calendar; charset=utf-8")
+    reponse["Content-Disposition"] = 'inline; filename="emploi_du_temps_ensiasd.ics"'
+    reponse["X-Robots-Tag"] = "noindex"
+    return reponse
 
 
 @role_requis("ADMIN", "SCOLARITE")
@@ -113,6 +172,7 @@ def emploi_du_temps_classe(request):
     if classe:
         seances = Seance.objects.filter(classe=classe).select_related("matiere", "enseignant", "salle", "groupe")
         jours = planning(seances, lundi, lundi + timedelta(days=5))
+        ajouter_examens(jours, Examen.objects.filter(classe=classe, date__range=(lundi, lundi + timedelta(days=5))))
     return render(
         request,
         "emplois/emploi_du_temps.html",

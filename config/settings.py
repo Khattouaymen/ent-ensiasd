@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
     # Modules de l'ENT
     "comptes",
     "structure",
@@ -67,6 +68,8 @@ INSTALLED_APPS = [
     "documents",
     "absences",
     "notifications",
+    "annonces",
+    "evaluations",
 ]
 
 MIDDLEWARE = [
@@ -148,6 +151,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalisation
 LANGUAGE_CODE = "fr-fr"
+# Français uniquement : sinon LocaleMiddleware suivrait la langue du navigateur (anglais, arabe…)
+# pour les dates et les messages de Django, au milieu d'une interface rédigée en français.
+LANGUAGES = [("fr", "Français")]
 TIME_ZONE = "Africa/Casablanca"
 USE_I18N = True
 USE_TZ = True

@@ -17,12 +17,15 @@
   {% endif %}
 </div>
 
-<div class="d-flex flex-wrap align-items-center gap-2 mb-4">
-  <a class="btn btn-sm btn-outline-secondary" href="{% querystring semaine=semaine_precedente|date:'Y-m-d' %}" aria-label="Semaine précédente"><i class="bi bi-chevron-left"></i></a>
-  <span class="fw-semibold">Semaine du {{ lundi|date:"j F" }} au {{ samedi|date:"j F Y" }}</span>
-  <a class="btn btn-sm btn-outline-secondary" href="{% querystring semaine=semaine_suivante|date:'Y-m-d' %}" aria-label="Semaine suivante"><i class="bi bi-chevron-right"></i></a>
-  <a class="btn btn-sm btn-link" href="{% querystring semaine=None %}">Cette semaine</a>
-</div>
+<div class="card mb-4"><div class="card-body d-flex flex-wrap align-items-center gap-2 py-2">
+  <a class="bouton-icone" href="{% querystring semaine=semaine_precedente|date:'Y-m-d' %}" aria-label="Semaine précédente"><i class="bi bi-chevron-left"></i></a>
+  <a class="bouton-icone" href="{% querystring semaine=semaine_suivante|date:'Y-m-d' %}" aria-label="Semaine suivante"><i class="bi bi-chevron-right"></i></a>
+  <span class="fw-bold ms-1">Semaine du {{ lundi|date:"j F" }} au {{ samedi|date:"j F Y" }}</span>
+  <a class="btn btn-sm btn-outline-secondary" href="{% querystring semaine=None %}">Cette semaine</a>
+  <div class="legende-types ms-lg-auto">
+    <span class="seance-COURS">Cours</span><span class="seance-TD">TD</span><span class="seance-TP">TP</span><span class="seance-EXAMEN">Examen</span>
+  </div>
+</div></div>
 
 {% if sans_classe %}
   <div class="alert alert-warning">Vous n'êtes affecté(e) à aucune classe. Contactez l'administration.</div>
@@ -31,26 +34,38 @@
 <div class="row g-3">
   {% for jour in jours %}
   <div class="col-md-6 col-xl-4">
-    <div class="card h-100{% if jour.date == aujourdhui %} border-primary{% endif %}">
-      <div class="card-header fw-semibold d-flex justify-content-between">
-        <span>{{ jour.date|date:"l j F"|capfirst }}</span>
-        {% if jour.date == aujourdhui %}<span class="badge text-bg-primary">Aujourd'hui</span>{% endif %}
+    <div class="card jour h-100{% if jour.date == aujourdhui %} aujourdhui{% endif %}">
+      <div class="card-header">
+        <span class="date-jour">{{ jour.date|date:"l j F"|capfirst }}</span>
+        {% if jour.date == aujourdhui %}<span class="badge text-bg-primary">Aujourd'hui</span>
+        {% elif jour.examens %}<span class="badge text-bg-danger">Examen</span>
+        {% elif jour.seances %}<span class="small text-muted">{{ jour.seances|length }} séance{{ jour.seances|length|pluralize }}</span>{% endif %}
       </div>
       {% if jour.fermeture %}
         <div class="card-body text-muted small"><i class="bi bi-calendar-x me-1"></i>{{ jour.fermeture.get_type_display }} : {{ jour.fermeture.nom }}</div>
       {% else %}
-      <ul class="list-group list-group-flush">
-        {% for s, annulation in jour.seances %}
+      <ul class="list-group">
+        {% for type, s, annulation in jour.creneaux %}
+          {% if type == "examen" %}{% with ex=s %}
+          <li class="list-group-item seance seance-EXAMEN">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <span class="fw-semibold small">{{ ex.heure_debut|time:"H:i" }}{% if ex.heure_fin %} – {{ ex.heure_fin|time:"H:i" }}{% endif %}</span>
+              <span class="badge type-seance">{{ ex.get_type_display }}</span>
+            </div>
+            <div class="intitule fw-semibold mt-1">{{ ex.intitule }}</div>
+            <div class="small text-muted">{% if ex.salle %}<i class="bi bi-geo-alt"></i> {{ ex.salle }} · {% endif %}{{ ex.matiere }}{% if ex.groupe %} · {{ ex.groupe.nom }}{% endif %}</div>
+          </li>
+          {% endwith %}{% else %}
           <li class="list-group-item seance seance-{{ s.type }}{% if annulation %} seance-annulee{% endif %}">
             <div class="d-flex justify-content-between gap-2">
-              <span class="fw-semibold">{{ s.heure_debut|time:"H:i" }} – {{ s.heure_fin|time:"H:i" }}</span>
+              <span class="fw-semibold small">{{ s.heure_debut|time:"H:i" }} – {{ s.heure_fin|time:"H:i" }}</span>
               <span>
                 {% if annulation %}<span class="badge text-bg-danger">Annulée</span>{% endif %}
                 {% if s.est_rattrapage %}<span class="badge text-bg-warning">Rattrapage</span>{% endif %}
-                <span class="badge text-bg-light">{{ s.get_type_display }}</span>
+                <span class="badge type-seance">{{ s.get_type_display }}</span>
               </span>
             </div>
-            <div class="intitule">{{ s.matiere }}</div>
+            <div class="intitule fw-semibold mt-1">{{ s.matiere }}</div>
             <div class="small text-muted">
               <i class="bi bi-geo-alt"></i> {{ s.salle }}
               {% if user.est_enseignant %} · {{ s.classe }}{% else %} · {{ s.enseignant }}{% endif %}
@@ -58,8 +73,9 @@
             </div>
             {% if annulation.motif %}<div class="small text-danger">{{ annulation.motif }}</div>{% endif %}
           </li>
+          {% endif %}
         {% empty %}
-          <li class="list-group-item text-muted small">Aucune séance</li>
+          <li class="list-group-item text-muted small px-0"><i class="bi bi-cup-hot me-1"></i>Aucune séance</li>
         {% endfor %}
       </ul>
       {% endif %}
@@ -67,4 +83,49 @@
   </div>
   {% endfor %}
 </div>
+
+{% if abonnement %}
+<div class="card mt-4"><div class="card-body d-flex flex-wrap align-items-start gap-3">
+  <span class="icone-ton ton-primaire" aria-hidden="true"><i class="bi bi-calendar2-plus"></i></span>
+  <div class="flex-grow-1" style="min-width: 16rem">
+    <h2 class="h6 mb-1">S'abonner à mon emploi du temps</h2>
+    <p class="small text-muted mb-2">
+      Vos séances, examens et dates limites de devoirs apparaissent dans Google Agenda, Outlook ou le calendrier
+      de votre téléphone, et se mettent à jour automatiquement. Ce lien est personnel : ne le partagez pas.
+    </p>
+    {% if lien_calendrier %}
+      <div class="input-group mb-2">
+        <input type="text" class="form-control" id="lien-calendrier" value="{{ lien_calendrier }}" readonly aria-label="Lien d'abonnement">
+        <button class="btn btn-outline-secondary" type="button" id="copier-lien"><i class="bi bi-clipboard me-1"></i>Copier</button>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-ent" href="https://calendar.google.com/calendar/r?cid={{ lien_calendrier|cut:'https://'|cut:'http://'|urlencode:'' }}" target="_blank" rel="noopener">
+          <i class="bi bi-google me-1"></i>Google Agenda</a>
+        <a class="btn btn-sm btn-outline-primary" href="webcal://{{ lien_calendrier|cut:'https://'|cut:'http://' }}"><i class="bi bi-apple me-1"></i>iPhone, Mac, Outlook</a>
+        <form method="post" action="{% url 'emplois:abonnement' %}" onsubmit="return confirm('L\'ancien lien cessera de fonctionner. Continuer ?')">
+          {% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-repeat me-1"></i>Changer de lien</button>
+        </form>
+      </div>
+    {% else %}
+      <form method="post" action="{% url 'emplois:abonnement' %}">
+        {% csrf_token %}<button type="submit" class="btn btn-sm btn-ent"><i class="bi bi-link-45deg me-1"></i>Créer mon lien d'abonnement</button>
+      </form>
+    {% endif %}
+  </div>
+</div></div>
+<script>
+  (function () {
+    var bouton = document.getElementById("copier-lien");
+    if (!bouton) { return; }
+    bouton.addEventListener("click", function () {
+      var champ = document.getElementById("lien-calendrier");
+      champ.select();
+      (navigator.clipboard ? navigator.clipboard.writeText(champ.value) : Promise.reject()).then(
+        function () { bouton.innerHTML = '<i class="bi bi-check2 me-1"></i>Copié'; },
+        function () { document.execCommand("copy"); }
+      );
+    });
+  })();
+</script>
+{% endif %}
 {% endblock %}

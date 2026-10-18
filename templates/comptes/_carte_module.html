@@ -1,9 +1,12 @@
 <div class="col-sm-6">
-  <div class="card h-100">
+  <div class="card carte-module h-100">
     <div class="card-body">
-      <h3 class="h6"><i class="bi bi-{{ icone }} me-2 text-ent"></i>{{ titre }}</h3>
-      <p class="small text-muted mb-2">{{ texte }}</p>
-      <a href="{% url lien %}" class="stretched-link small">Ouvrir</a>
+      <span class="icone-ton ton-{{ ton|default:'primaire' }}" aria-hidden="true"><i class="bi bi-{{ icone }}"></i></span>
+      <div>
+        <h3><a href="{% url lien %}" class="stretched-link">{{ titre }}</a></h3>
+        <p class="small text-muted mb-0">{{ texte }}</p>
+      </div>
+      <i class="bi bi-arrow-right fleche" aria-hidden="true"></i>
     </div>
   </div>
 </div>
