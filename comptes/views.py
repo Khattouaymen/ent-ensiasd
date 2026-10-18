@@ -8,6 +8,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import PasswordChangeView
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.exceptions import ValidationError
+from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q, Sum
+from django.db.models.functions import Coalesce, TruncWeek
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
@@ -22,8 +24,8 @@ from structure.models import Classe, Filiere
 
 from .forms import ChangementMotDePasseForm, ImportEtudiantsForm
 from .importation import importer
-from .permissions import role_requis
 from .models import Utilisateur
+from .permissions import role_requis
 from .templatetags.ent import heures as format_heures
 
 
@@ -147,34 +149,47 @@ def modele_import(request):
     return reponse
 
 
-def delai_moyen_jours(objets, debut, fin):
-    """Délai moyen (en jours) entre deux dates d'une liste d'objets traités, ou None."""
-    delais = [(getattr(o, fin) - getattr(o, debut)).total_seconds() / 86400 for o in objets if getattr(o, fin)]
-    return sum(delais) / len(delais) if delais else None
+def nombre_et_delai_moyen(traites, debut, fin):
+    """Nombre d'objets traités et délai moyen (en jours) entre deux dates, ou None s'il n'y en a pas."""
+    resultat = traites.aggregate(
+        nombre=Count("pk"), delai=Avg(ExpressionWrapper(F(fin) - F(debut), output_field=DurationField()))
+    )
+    delai = resultat["delai"]
+    return resultat["nombre"], (delai.total_seconds() / 86400 if delai is not None else None)
+
+
+def somme_heures(**filtre):
+    """Somme des heures d'absence (0 s'il n'y en a pas), éventuellement restreinte par un filtre."""
+    return Coalesce(Sum("duree_heures", filter=Q(**filtre) if filtre else None), 0.0)
 
 
 @role_requis("ADMIN", "SCOLARITE")
 def statistiques(request):
-    """Tableau de bord chiffré : absences par matière et par semaine, délais de traitement."""
+    """Tableau de bord chiffré : absences par matière et par semaine, délais de traitement.
+
+    Les totaux sont calculés par la base (quelques requêtes, quel que soit le nombre d'absences).
+    """
     classes = Classe.objects.all()
     classe_id = request.GET.get("classe", "")
     classe = classes.filter(pk=classe_id).first() if classe_id.isdigit() else None
 
-    absences = Absence.objects.filter(nature=Absence.Nature.ABSENCE).select_related("seance__matiere")
+    absences = Absence.objects.filter(nature=Absence.Nature.ABSENCE).order_by()
     demandes = DemandeDocument.objects.exclude(date_traitement=None)
     justifications = Justification.objects.exclude(date_traitement=None)
     if classe:
         absences = absences.filter(seance__classe=classe)
         demandes = demandes.filter(etudiant__classe=classe)
         justifications = justifications.filter(absence__seance__classe=classe)
-    absences = list(absences)
 
     # Heures d'absence par matière (justifiées / non justifiées)
-    par_matiere = {}
-    for a in absences:
-        ligne = par_matiere.setdefault(a.seance.matiere.nom, {"matiere": a.seance.matiere.nom, "justifiees": 0.0, "non_justifiees": 0.0})
-        ligne["justifiees" if a.statut == Absence.Statut.JUSTIFIEE else "non_justifiees"] += a.duree_heures
-    par_matiere = sorted(par_matiere.values(), key=lambda l: -(l["justifiees"] + l["non_justifiees"]))
+    par_matiere = list(
+        absences.values(matiere=F("seance__matiere__nom"))
+        .annotate(
+            justifiees=somme_heures(statut=Absence.Statut.JUSTIFIEE),
+            non_justifiees=somme_heures(statut=Absence.Statut.NON_JUSTIFIEE),
+        )
+        .order_by((F("justifiees") + F("non_justifiees")).desc(), "matiere")
+    )
 
     # Heures d'absence par semaine, sur les 12 dernières semaines de l'année universitaire
     lundi_courant = timezone.localdate() - timedelta(days=timezone.localdate().isoweekday() - 1)
@@ -183,22 +198,26 @@ def statistiques(request):
     rentrees = [c.periode()[0] for c in ([classe] if classe else classes)]
     if rentrees:
         semaines = [s for s in semaines if s + timedelta(days=6) >= min(rentrees)] or semaines[-1:]
-    heures_semaine = {s: 0.0 for s in semaines}
-    for a in absences:
-        lundi = a.date - timedelta(days=a.date.isoweekday() - 1)
-        if lundi in heures_semaine:
-            heures_semaine[lundi] += a.duree_heures
-    par_semaine = [{"semaine": s.isoformat(), "libelle": f"{s:%d/%m}", "heures": h} for s, h in heures_semaine.items()]
+    heures_semaine = dict(
+        absences.filter(date__range=(semaines[0], semaines[-1] + timedelta(days=6)))
+        .annotate(semaine=TruncWeek("date"))
+        .values_list("semaine")
+        .annotate(heures=somme_heures())
+    )
+    par_semaine = [
+        {"semaine": s.isoformat(), "libelle": f"{s:%d/%m}", "heures": heures_semaine.get(s, 0.0)} for s in semaines
+    ]
 
-    total = sum(a.duree_heures for a in absences)
-    justifiees = sum(a.duree_heures for a in absences if a.statut == Absence.Statut.JUSTIFIEE)
+    totaux = absences.aggregate(total=somme_heures(), justifiees=somme_heures(statut=Absence.Statut.JUSTIFIEE))
+    demandes_traitees, delai_demandes = nombre_et_delai_moyen(demandes, "date_demande", "date_traitement")
+    justifications_traitees, delai_justifications = nombre_et_delai_moyen(justifications, "date_depot", "date_traitement")
     indicateurs = {
-        "total": total,
-        "taux_justification": 100 * justifiees / total if total else None,
-        "delai_demandes": delai_moyen_jours(demandes, "date_demande", "date_traitement"),
-        "delai_justifications": delai_moyen_jours(justifications, "date_depot", "date_traitement"),
-        "demandes_traitees": demandes.count(),
-        "justifications_traitees": justifications.count(),
+        "total": totaux["total"],
+        "taux_justification": 100 * totaux["justifiees"] / totaux["total"] if totaux["total"] else None,
+        "delai_demandes": delai_demandes,
+        "delai_justifications": delai_justifications,
+        "demandes_traitees": demandes_traitees,
+        "justifications_traitees": justifications_traitees,
     }
     return render(
         request,

@@ -3,7 +3,9 @@
 import re
 import tempfile
 import zipfile
+from datetime import date, timedelta
 from pathlib import Path
+from unittest import mock
 
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -12,7 +14,9 @@ from django.core.management.base import CommandError
 from django.db import transaction
 from django.test import TestCase, TransactionTestCase, override_settings
 
-from config.donnees_test import creer_etablissement
+from absences.models import Absence
+from config.donnees_test import MARDI, creer_etablissement
+from documents.models import DemandeDocument
 
 from .models import Utilisateur
 
@@ -112,6 +116,28 @@ class StatistiquesTests(TestCase):
         self.assertGreaterEqual(semaines[0]["semaine"], "2026-08-26")
         self.client.force_login(self.d.etu1)
         self.assertEqual(self.client.get("/statistiques/").status_code, 403)
+
+    def test_totaux_par_matiere_et_par_semaine(self):
+        Absence.objects.create(etudiant=self.d.etu1, seance=self.d.seance, date=MARDI)  # 2 h
+        Absence.objects.create(etudiant=self.d.etu2, seance=self.d.seance, date=MARDI, statut=Absence.Statut.JUSTIFIEE)
+        Absence.objects.create(etudiant=self.d.etu1, seance=self.d.seance, date=date(2026, 9, 29), nature=Absence.Nature.RETARD)
+        demande = DemandeDocument.objects.create(etudiant=self.d.etu1, type_document=DemandeDocument.TypeDocument.RELEVE_NOTES)
+        DemandeDocument.objects.filter(pk=demande.pk).update(
+            statut=DemandeDocument.Statut.PRETE, date_traitement=demande.date_demande + timedelta(days=2)
+        )
+        self.client.force_login(self.d.admin)
+        with mock.patch("comptes.views.timezone.localdate", return_value=date(2026, 10, 15)):
+            contexte = self.client.get(f"/statistiques/?classe={self.d.classe.pk}").context
+
+        # Le retard ne compte pas d'heures
+        self.assertEqual(contexte["par_matiere"], [{"matiere": "Bases de données", "justifiees": 2.0, "non_justifiees": 2.0}])
+        semaines = {s["semaine"]: s["heures"] for s in contexte["par_semaine"]}
+        self.assertEqual((semaines["2026-09-28"], semaines["2026-10-05"], semaines["2026-10-12"]), (0.0, 4.0, 0.0))
+        indicateurs = contexte["indicateurs"]
+        self.assertEqual((indicateurs["total"], indicateurs["taux_justification"]), (4.0, 50.0))
+        self.assertEqual((indicateurs["demandes_traitees"], indicateurs["justifications_traitees"]), (1, 0))
+        self.assertAlmostEqual(indicateurs["delai_demandes"], 2.0)
+        self.assertIsNone(indicateurs["delai_justifications"])
 
 
 class SauvegardeTests(TransactionTestCase):
