@@ -76,6 +76,18 @@
   </div>
 
   <div class="col-lg-4">
+    {% if annonces %}
+    <h2 class="titre-section">Annonces<a class="ms-auto small fw-semibold" href="{% url 'annonces:liste' %}">Tout voir</a></h2>
+    <div class="card mb-4"><ul class="list-group list-group-flush liste-annonces">
+      {% for a in annonces %}
+        <li class="list-group-item position-relative{% if a.importante %} importante{% endif %}">
+          <a href="{{ a.get_absolute_url }}" class="stretched-link fw-semibold text-reset">{{ a.titre }}</a>
+          <div class="small text-muted">{% if a.importante %}<span class="text-danger fw-semibold">Importante · </span>{% endif %}{{ a.destinataires_libelle }} · {{ a.date_publication|date:"j M" }}</div>
+        </li>
+      {% endfor %}
+    </ul></div>
+    {% endif %}
+
     {% if user.est_etudiant or user.est_enseignant %}
     <h2 class="titre-section">Aujourd'hui</h2>
     <div class="card mb-4"><ul class="list-group list-group-flush journee">

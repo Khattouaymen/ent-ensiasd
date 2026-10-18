@@ -16,6 +16,7 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 
 from absences.models import Absence, AlerteAbsence, Justification
+from annonces.models import Annonce
 from documents.models import DemandeDocument
 from emplois.models import JourNonTravaille, Seance
 from emplois.views import planning, seances_de
@@ -40,6 +41,7 @@ def tableau_de_bord(request):
     contexte = {
         "notifications": user.notifications.all()[:5],
         "fermeture": JourNonTravaille.couvrant(aujourdhui),
+        "annonces": Annonce.visibles_par(user)[:3],
     }
     if user.est_etudiant or user.est_enseignant:
         jours = planning(seances_de(user), aujourdhui, aujourdhui)

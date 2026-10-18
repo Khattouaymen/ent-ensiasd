@@ -780,6 +780,16 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   box-shadow: 0 0 0 3px var(--ent-accent-doux);
 }
 
+/* Annonces */
+.annonce.importante,
+.liste-annonces .importante {
+  border-left: 4px solid #f04438;
+}
+
+.contenu-annonce {
+  line-height: 1.7;
+}
+
 /* --- 6. Séances et emploi du temps ---------------------------------------------------- */
 
 .seance {

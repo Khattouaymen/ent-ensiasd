@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     "documents",
     "absences",
     "notifications",
+    "annonces",
 ]
 
 MIDDLEWARE = [

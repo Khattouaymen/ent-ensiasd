@@ -28,6 +28,7 @@
 
     <nav aria-label="Navigation principale">
       {% lien_menu "tableau_de_bord" "grid-1x2" "Tableau de bord" %}
+      {% lien_menu "annonces:liste" "megaphone" "Annonces" "annonces:detail" "annonces:nouvelle" %}
       {% if user.est_etudiant %}
         <p class="ent-menu-titre">Ma scolarité</p>
         {% lien_menu "emplois:mon_emploi_du_temps" "calendar-week" "Emploi du temps" %}
