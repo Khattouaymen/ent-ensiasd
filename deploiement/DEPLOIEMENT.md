@@ -67,6 +67,9 @@ export DJANGO_DEBUG=0 DJANGO_SECRET_KEY_FILE=~/.ent_cle_secrete DJANGO_ALLOWED_H
 
 Puis **Reload** dans l'onglet « Web ».
 
+`collectstatic` est indispensable à chaque mise à jour : en production, les fichiers statiques portent une empreinte
+dans leur nom (`ent.3f1a9c….css`), et une page qui utilise un fichier absent de `staticfiles/` renvoie une erreur 500.
+
 ## Limites de la formule gratuite
 
 - Le site est désactivé s'il n'est pas prolongé **chaque mois** (bouton *Run until 1 month from today*, onglet « Web ») ; PythonAnywhere envoie un e-mail de rappel une semaine avant.

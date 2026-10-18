@@ -3,7 +3,7 @@
 Projet MGSI S3 (2026/2027) – ENSIASD Taroudant.
 Plateforme web : absences, ressources pédagogiques, demandes de documents, classes et emplois du temps.
 
-**Technologies :** Python 3.11 · Django 5.2 LTS · SQLite · Bootstrap 5
+**Technologies :** Python 3.11 (dernière version 3.11.x) · Django 5.2 LTS · SQLite · Bootstrap 5
 
 ## Installation (première fois)
 
@@ -65,6 +65,9 @@ Toutes les user stories du backlog (US01 à US18) sont réalisées, ainsi que le
 - Connexion bloquée 15 minutes après 5 échecs (par identifiant et adresse IP). Les compteurs sont gardés dans la base (cache Django, table `cache_ent` créée par `migrate`) : ils survivent aux redémarrages du site.
 - Mot de passe oublié : lien de réinitialisation envoyé par e-mail, au plus 3 fois par heure pour une même adresse. En développement, l'e-mail s'affiche dans la console du serveur ; en production, renseigner `DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend`, `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_HOST_USER`, `DJANGO_EMAIL_HOST_PASSWORD`.
 - Les fichiers déposés ne sont jamais publics, et leur contenu réel est vérifié (un exécutable renommé en `.pdf` est refusé).
+- La session se termine à la fermeture du navigateur, et au plus tard 10 heures après la connexion (ordinateurs partagés).
+- Bootstrap et Chart.js viennent d'un CDN, avec leur empreinte (`integrity`) : un fichier modifié sur le CDN serait refusé par le navigateur.
+  Pour changer de version, recalculer l'empreinte (`openssl dgst -sha384 -binary fichier | openssl base64 -A`).
 
 **Emploi du temps et appel**
 - Détection des conflits de salle, d'enseignant et de classe/groupe ; un enseignant ne peut être planifié que sur une matière qui lui est affectée.
@@ -110,14 +113,19 @@ Après la sauvegarde, `python manage.py purger_notifications` supprime les notif
 ## Tests
 
 ```bash
-python -X no_debug_ranges manage.py test
+python manage.py test
+pip install ruff && ruff check .   # qualité du code (règles dans pyproject.toml)
 ```
 
-L'option `-X no_debug_ranges` contourne un bug d'affichage des erreurs propre à Python 3.11.0 (corrigé dans les versions 3.11.x suivantes).
+Avec Python 3.11.0, ajouter `-X no_debug_ranges` (`python -X no_debug_ranges manage.py test`) : cette version a un bug
+d'affichage des erreurs, corrigé dans les versions 3.11.x suivantes. Le plus simple est d'installer la dernière 3.11.x.
+
+GitHub Actions (`.github/workflows/tests.yml`) relance tout sur chaque pull request et à chaque fusion dans `main` :
+Ruff, migrations à jour, tests, puis `check --deploy` et `collectstatic` en configuration de production.
 
 ## Règles de travail en équipe
 
 - Une branche Git par user story (`us13-saisie-absences`), fusion par pull request.
-- Lancer les tests avant chaque push.
+- Lancer les tests avant chaque push ; une pull request ne se fusionne que si la vérification GitHub Actions est verte.
 - Après une modification d'un `models.py` : `python manage.py makemigrations` et versionner la migration.
 - Ne jamais versionner `db.sqlite3`, `media/` ni `.venv/` (déjà dans `.gitignore`).
