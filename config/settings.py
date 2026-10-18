@@ -151,6 +151,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalisation
 LANGUAGE_CODE = "fr-fr"
+# Français uniquement : sinon LocaleMiddleware suivrait la langue du navigateur (anglais, arabe…)
+# pour les dates et les messages de Django, au milieu d'une interface rédigée en français.
+LANGUAGES = [("fr", "Français")]
 TIME_ZONE = "Africa/Casablanca"
 USE_I18N = True
 USE_TZ = True

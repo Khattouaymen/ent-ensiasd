@@ -37,6 +37,12 @@ class AuthentificationTests(TestCase):
                 self.client.force_login(u)
                 self.assertEqual(self.client.get("/").status_code, 200)
 
+    def test_en_francais_quelle_que_soit_la_langue_du_navigateur(self):
+        self.client.force_login(Utilisateur.objects.create(username="etu", role=Utilisateur.Role.ETUDIANT))
+        for langue in ("en-US,en;q=0.9", "ar-MA,ar;q=0.9"):
+            with self.subTest(langue=langue):
+                self.assertEqual(self.client.get("/", HTTP_ACCEPT_LANGUAGE=langue)["Content-Language"], "fr")
+
     def test_seul_l_admin_accede_a_l_administration(self):
         for role, attendu in [("ETUDIANT", 302), ("ENSEIGNANT", 302), ("SCOLARITE", 302), ("ADMIN", 200)]:
             with self.subTest(role=role):
