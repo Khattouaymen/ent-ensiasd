@@ -133,6 +133,17 @@ class ProtectionConnexionTests(TestCase):
         self.assertEqual(self.connexion("BonMotDePasse!2026").status_code, 302)
 
 
+class SessionTests(TestCase):
+    def test_session_fermee_avec_le_navigateur_et_limitee_a_dix_heures(self):
+        u = Utilisateur.objects.create(username="poste_partage")
+        u.set_password("BonMotDePasse!2026")
+        u.save()
+        reponse = self.client.post("/connexion/", {"username": "poste_partage", "password": "BonMotDePasse!2026"})
+        self.assertEqual(reponse.cookies["sessionid"]["max-age"], "")  # cookie supprimé à la fermeture
+        self.assertTrue(self.client.session.get_expire_at_browser_close())
+        self.assertEqual(self.client.session.get_expiry_age(), 10 * 60 * 60)
+
+
 class MonCompteTests(TestCase):
     """Changement de mot de passe par l'utilisateur (audit, point 7)."""
 

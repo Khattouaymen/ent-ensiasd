@@ -133,6 +133,11 @@ LOGIN_URL = "connexion"
 LOGIN_REDIRECT_URL = "tableau_de_bord"
 LOGOUT_REDIRECT_URL = "connexion"
 
+# Ordinateurs partagés (salles informatiques) : la session se termine à la fermeture du
+# navigateur, et au plus tard 10 heures après la connexion (une journée de cours).
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 10 * 60 * 60
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -152,6 +157,14 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STOCKAGE_STATIQUES_PRODUCTION = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+if not DEBUG:
+    # « collectstatic » ajoute une empreinte au nom des fichiers (ent.3f1a9c….css) : après une
+    # mise à jour, les navigateurs chargent la nouvelle version au lieu de garder l'ancienne en cache.
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": STOCKAGE_STATIQUES_PRODUCTION},
+    }
 
 # Les fichiers déposés ne sont jamais servis directement : ils passent par des
 # vues qui vérifient les droits de l'utilisateur (confidentialité, BNF02).
