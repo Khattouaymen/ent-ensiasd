@@ -52,10 +52,14 @@
         {% include "comptes/_carte_module.html" with icone="calendar-week" ton="primaire" titre="Emploi du temps" texte="Mes séances de la semaine." lien="emplois:mon_emploi_du_temps" %}
         {% include "comptes/_carte_module.html" with icone="journal-text" ton="violet" titre="Cours, TD et TP" texte="Supports de ma filière et de mon niveau." lien="ressources:liste" %}
         {% include "comptes/_carte_module.html" with icone="person-x" ton="danger" titre="Mes absences" texte="Heures d'absence par matière et justifications." lien="absences:mes_absences" %}
+        {% include "comptes/_carte_module.html" with icone="calendar-event" ton="accent" titre="Examens et rendus" texte="Dates des examens et des devoirs à rendre." lien="evaluations:calendrier" %}
+        {% include "comptes/_carte_module.html" with icone="journal-arrow-up" ton="violet" titre="Devoirs" texte="Déposer mes devoirs et comptes rendus de TP." lien="evaluations:devoirs" %}
         {% include "comptes/_carte_module.html" with icone="file-earmark-text" ton="turquoise" titre="Demandes de documents" texte="Attestations, relevés de notes…" lien="documents:liste" %}
       {% elif user.est_enseignant %}
         {% include "comptes/_carte_module.html" with icone="clipboard-check" ton="succes" titre="Faire l'appel" texte="Saisir les absences d'une séance." lien="absences:choisir_seance" %}
-        {% include "comptes/_carte_module.html" with icone="journal-arrow-up" ton="violet" titre="Mes ressources" texte="Déposer et gérer mes cours, TD et TP." lien="ressources:liste" %}
+        {% include "comptes/_carte_module.html" with icone="journal-check" ton="accent" titre="Devoirs" texte="Publier un devoir et récupérer les rendus." lien="evaluations:devoirs" %}
+        {% include "comptes/_carte_module.html" with icone="calendar-event" ton="danger" titre="Examens" texte="Programmer un examen ou un contrôle." lien="evaluations:calendrier" %}
+        {% include "comptes/_carte_module.html" with icone="journal-text" ton="violet" titre="Mes ressources" texte="Déposer et gérer mes cours, TD et TP." lien="ressources:liste" %}
         {% include "comptes/_carte_module.html" with icone="calendar-week" ton="primaire" titre="Emploi du temps" texte="Mes séances de la semaine." lien="emplois:mon_emploi_du_temps" %}
       {% elif user.est_scolarite %}
         {% include "comptes/_carte_module.html" with icone="file-earmark-check" ton="primaire" titre="Demandes de documents" texte="Traiter les demandes des étudiants." lien="documents:liste" %}
@@ -107,6 +111,17 @@
         </li>
       {% empty %}
         {% if not fermeture %}<li class="list-group-item text-muted"><i class="bi bi-cup-hot"></i>Aucune séance aujourd'hui.</li>{% endif %}
+      {% endfor %}
+    </ul></div>
+    {% endif %}
+
+    {% if user.est_etudiant or user.est_enseignant %}
+    <h2 class="titre-section">À venir<a class="ms-auto small fw-semibold" href="{% url 'evaluations:calendrier' %}">Calendrier</a></h2>
+    <div class="card mb-4"><ul class="list-group list-group-flush echeances">
+      {% for e in a_venir %}
+        {% include "evaluations/_echeance.html" with avec_date=True %}
+      {% empty %}
+        <li class="list-group-item text-muted small"><i class="bi bi-calendar-check me-1"></i>Aucun examen ni rendu dans les deux semaines.</li>
       {% endfor %}
     </ul></div>
     {% endif %}

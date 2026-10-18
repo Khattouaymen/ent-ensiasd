@@ -69,3 +69,12 @@ def initiales(utilisateur):
     """Initiales affichées dans l'avatar : « Yassine Amrani » → « YA »."""
     lettres = (utilisateur.first_name[:1] + utilisateur.last_name[:1]) or utilisateur.username[:2]
     return lettres.upper()
+
+
+@register.filter
+def echeance(dans_jours):
+    """Écart en jours avec aujourd'hui : « Aujourd'hui », « Demain », « Dans 3 jours », « Il y a 2 jours »."""
+    libelles = {0: "Aujourd'hui", 1: "Demain", -1: "Hier"}
+    if dans_jours in libelles:
+        return libelles[dans_jours]
+    return f"Dans {dans_jours} jours" if dans_jours > 0 else f"Il y a {-dans_jours} jours"

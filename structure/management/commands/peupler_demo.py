@@ -18,11 +18,13 @@ from django.db import transaction
 from django.utils import timezone
 
 from absences.models import Absence, AlerteAbsence, Justification
+from annonces.models import Annonce
 from comptes.importation import mot_de_passe_provisoire
 from comptes.models import Utilisateur
 from documents.attestation import generer_attestation
 from documents.models import DemandeDocument
 from emplois.models import AnnulationSeance, JourNonTravaille, Seance
+from evaluations.models import Devoir, Examen, Rendu
 from ressources.models import Ressource
 from structure.models import Classe, Enseignement, Filiere, Groupe, Matiere, Niveau, Salle
 
@@ -235,10 +237,66 @@ class Command(BaseCommand):
             r.fichier.save(fichier, ContentFile(b"%PDF-1.4\n% support fictif\n"), save=False)
             r.save()
 
+        # Annonces, examens et devoirs (dates calculées à partir d'aujourd'hui, jamais un dimanche)
+        def jour_ouvre(dans_jours):
+            jour = aujourdhui + timedelta(days=dans_jours)
+            return jour + timedelta(days=1) if jour.isoweekday() == 7 else jour
+
+        Annonce.objects.create(
+            titre="Calendrier des examens du semestre", importante=True, auteur=scolarite,
+            contenu="Les dates des contrôles et des examens de votre classe sont publiées dans « Examens et rendus ».\n"
+                    "Un rappel vous sera envoyé deux jours avant chaque épreuve.",
+        ).notifier()
+        Annonce.objects.create(
+            titre="Réunion d'information sur les stages de fin d'année", filiere=mgsi, auteur=scolarite,
+            contenu="Présentation des offres de stage et des conventions, jeudi à 16 h en Amphi A.",
+        )
+        Annonce.objects.create(
+            titre="TP de bases de données : apportez vos ordinateurs", classe=classe, auteur=profs[1],
+            contenu="Installez PostgreSQL avant la séance (la procédure est dans les supports du cours).",
+        )
+        # Contrôle après les cours (16 h 45), examen et soutenance des samedis sans séance
+        Examen.objects.create(
+            classe=classe, matiere=web, type=Examen.Type.CONTROLE, titre="Contrôle continu – Django", date=jour_ouvre(4),
+            heure_debut=time(16, 45), heure_fin=time(18, 0), salle=labo, cree_par=profs[2],
+        )
+        Examen.objects.create(
+            classe=classe, matiere=bd, type=Examen.Type.EXAMEN, date=prochain_samedi + timedelta(weeks=1),
+            heure_debut=time(9), heure_fin=time(11), salle=amphi,
+            consignes="Documents non autorisés. Calculatrice interdite.", cree_par=scolarite,
+        )
+        Examen.objects.create(
+            classe=classe, groupe=g1, matiere=gp, type=Examen.Type.SOUTENANCE, titre="Soutenance du projet Scrum",
+            date=prochain_samedi + timedelta(weeks=2), heure_debut=time(9), salle=s101, cree_par=profs[0],
+        )
+        maintenant = timezone.now()
+        Devoir.objects.create(
+            classe=classe, matiere=bd, enseignant=profs[1], titre="TP 2 – Index et plans d'exécution",
+            consignes="Créez les index demandés, comparez les plans d'exécution avant et après, "
+                      "et rendez votre script SQL commenté.",
+            date_limite=maintenant + timedelta(days=3, hours=2),
+        )
+        Devoir.objects.create(
+            classe=classe, groupe=g2, matiere=web, enseignant=profs[2], titre="Mini-projet Django", accepte_retard=True,
+            consignes="Application de gestion de bibliothèque : modèles, vues et gabarits. Rendez une archive ZIP du projet.",
+            date_limite=maintenant + timedelta(days=9),
+        )
+        termine = Devoir.objects.create(
+            classe=classe, matiere=gp, enseignant=profs[0], titre="Rédiger les user stories du projet",
+            consignes="Au moins dix user stories au format « En tant que… je veux… afin de… », avec critères d'acceptation.",
+            date_limite=maintenant - timedelta(days=5),
+        )
+        for etudiant in etudiants[:7]:
+            depot = termine.date_limite - timedelta(hours=hasard.randint(2, 48))
+            rendu = Rendu(devoir=termine, etudiant=etudiant, date_depot=depot)
+            rendu.fichier.save(f"user_stories_{etudiant.username}.pdf", ContentFile(b"%PDF-1.4\n% rendu fictif\n"), save=False)
+            rendu.save()
+
         self.stdout.write(self.style.SUCCESS(
             f"Données de démonstration créées : 1 classe, {len(etudiants)} étudiants, "
             f"{len(profs)} enseignants, {len(seances)} séances + 1 rattrapage, {len(supports)} ressources, "
-            f"{Absence.objects.count()} absences et retards, {AlerteAbsence.objects.count()} alertes.\n"
+            f"{Absence.objects.count()} absences et retards, {AlerteAbsence.objects.count()} alertes, "
+            f"{Annonce.objects.count()} annonces, {Examen.objects.count()} examens, {Devoir.objects.count()} devoirs.\n"
             "Comptes : admin, scolarite, enseignant1 à enseignant3, etudiant1 à etudiant10 "
             "(mot de passe : celui du README, ou celui passé avec --mot-de-passe)."
         ))

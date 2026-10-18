@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "absences",
     "notifications",
     "annonces",
+    "evaluations",
 ]
 
 MIDDLEWARE = [

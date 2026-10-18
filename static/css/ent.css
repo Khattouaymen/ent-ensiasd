@@ -790,6 +790,19 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   line-height: 1.7;
 }
 
+/* Échéances (examens, devoirs) */
+.echeances .list-group-item {
+  display: flex;
+  gap: .9rem;
+  padding: .85rem 1rem;
+}
+
+.echeances .icone-ton {
+  width: 38px;
+  height: 38px;
+  font-size: 1.05rem;
+}
+
 /* --- 6. Séances et emploi du temps ---------------------------------------------------- */
 
 .seance {
@@ -801,6 +814,11 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
 .seance-COURS {
   --c: var(--type-cours);
   --c-texte: var(--type-cours-texte);
+}
+
+.seance-EXAMEN {
+  --c: #d92d20;
+  --c-texte: #a8201a;
 }
 
 .seance-TD {

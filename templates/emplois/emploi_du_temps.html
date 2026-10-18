@@ -23,7 +23,7 @@
   <span class="fw-bold ms-1">Semaine du {{ lundi|date:"j F" }} au {{ samedi|date:"j F Y" }}</span>
   <a class="btn btn-sm btn-outline-secondary" href="{% querystring semaine=None %}">Cette semaine</a>
   <div class="legende-types ms-lg-auto">
-    <span class="seance-COURS">Cours</span><span class="seance-TD">TD</span><span class="seance-TP">TP</span>
+    <span class="seance-COURS">Cours</span><span class="seance-TD">TD</span><span class="seance-TP">TP</span><span class="seance-EXAMEN">Examen</span>
   </div>
 </div></div>
 
@@ -38,13 +38,24 @@
       <div class="card-header">
         <span class="date-jour">{{ jour.date|date:"l j F"|capfirst }}</span>
         {% if jour.date == aujourdhui %}<span class="badge text-bg-primary">Aujourd'hui</span>
+        {% elif jour.examens %}<span class="badge text-bg-danger">Examen</span>
         {% elif jour.seances %}<span class="small text-muted">{{ jour.seances|length }} séance{{ jour.seances|length|pluralize }}</span>{% endif %}
       </div>
       {% if jour.fermeture %}
         <div class="card-body text-muted small"><i class="bi bi-calendar-x me-1"></i>{{ jour.fermeture.get_type_display }} : {{ jour.fermeture.nom }}</div>
       {% else %}
       <ul class="list-group">
-        {% for s, annulation in jour.seances %}
+        {% for type, s, annulation in jour.creneaux %}
+          {% if type == "examen" %}{% with ex=s %}
+          <li class="list-group-item seance seance-EXAMEN">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <span class="fw-semibold small">{{ ex.heure_debut|time:"H:i" }}{% if ex.heure_fin %} – {{ ex.heure_fin|time:"H:i" }}{% endif %}</span>
+              <span class="badge type-seance">{{ ex.get_type_display }}</span>
+            </div>
+            <div class="intitule fw-semibold mt-1">{{ ex.intitule }}</div>
+            <div class="small text-muted">{% if ex.salle %}<i class="bi bi-geo-alt"></i> {{ ex.salle }} · {% endif %}{{ ex.matiere }}{% if ex.groupe %} · {{ ex.groupe.nom }}{% endif %}</div>
+          </li>
+          {% endwith %}{% else %}
           <li class="list-group-item seance seance-{{ s.type }}{% if annulation %} seance-annulee{% endif %}">
             <div class="d-flex justify-content-between gap-2">
               <span class="fw-semibold small">{{ s.heure_debut|time:"H:i" }} – {{ s.heure_fin|time:"H:i" }}</span>
@@ -62,6 +73,7 @@
             </div>
             {% if annulation.motif %}<div class="small text-danger">{{ annulation.motif }}</div>{% endif %}
           </li>
+          {% endif %}
         {% empty %}
           <li class="list-group-item text-muted small px-0"><i class="bi bi-cup-hot me-1"></i>Aucune séance</li>
         {% endfor %}

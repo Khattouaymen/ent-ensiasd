@@ -32,6 +32,8 @@
       {% if user.est_etudiant %}
         <p class="ent-menu-titre">Ma scolarité</p>
         {% lien_menu "emplois:mon_emploi_du_temps" "calendar-week" "Emploi du temps" %}
+        {% lien_menu "evaluations:calendrier" "calendar-event" "Examens et rendus" %}
+        {% lien_menu "evaluations:devoirs" "journal-arrow-up" "Devoirs" "evaluations:devoir" %}
         {% lien_menu "ressources:liste" "journal-text" "Cours, TD et TP" %}
         {% lien_menu "absences:mes_absences" "person-x" "Mes absences" "absences:justifier" %}
         {% lien_menu "documents:liste" "file-earmark-text" "Documents" "documents:nouvelle" %}
@@ -39,7 +41,9 @@
         <p class="ent-menu-titre">Enseignement</p>
         {% lien_menu "emplois:mon_emploi_du_temps" "calendar-week" "Emploi du temps" %}
         {% lien_menu "absences:choisir_seance" "clipboard-check" "Faire l'appel" "absences:appel" %}
-        {% lien_menu "ressources:liste" "journal-arrow-up" "Mes ressources" "ressources:deposer" %}
+        {% lien_menu "evaluations:calendrier" "calendar-event" "Examens et rendus" "evaluations:nouvel_examen" %}
+        {% lien_menu "evaluations:devoirs" "journal-check" "Devoirs" "evaluations:devoir" "evaluations:nouveau_devoir" %}
+        {% lien_menu "ressources:liste" "journal-text" "Mes ressources" "ressources:deposer" %}
       {% else %}
         <p class="ent-menu-titre">Scolarité</p>
         {% if user.est_scolarite %}
@@ -49,6 +53,7 @@
         {% lien_menu "absences:par_classe" "people" "Absences par classe" %}
         {% if user.est_admin %}{% lien_menu "absences:choisir_seance" "clipboard-check" "Faire l'appel" "absences:appel" %}{% endif %}
         {% lien_menu "emplois:emploi_du_temps_classe" "calendar-week" "Emplois du temps" %}
+        {% lien_menu "evaluations:calendrier" "calendar-event" "Examens et rendus" "evaluations:nouvel_examen" %}
         {% lien_menu "statistiques" "graph-up" "Statistiques" %}
         {% lien_menu "importer_etudiants" "person-plus" "Importer des étudiants" %}
         {% if user.est_admin %}

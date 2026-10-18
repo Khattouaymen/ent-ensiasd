@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date as Date
 from datetime import timedelta
 
@@ -7,6 +8,8 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from comptes.permissions import role_requis
+from evaluations.models import Examen
+from evaluations.views import examens_visibles
 from structure.models import Classe
 
 from .models import AnnulationSeance, JourNonTravaille, Seance
@@ -62,6 +65,20 @@ def planning(seances, du, au):
     return jours
 
 
+def ajouter_examens(jours, examens):
+    """Ajoute à chaque jour ses examens (« examens ») et ses créneaux triés par heure (« creneaux ») :
+    [("seance", séance, annulation ou None) ou ("examen", examen, None), …]."""
+    par_jour = defaultdict(list)
+    for examen in examens.select_related("matiere", "salle", "groupe"):
+        par_jour[examen.date].append(examen)
+    for jour in jours:
+        jour["examens"] = [] if jour["fermeture"] else par_jour.get(jour["date"], [])
+        creneaux = [(s.heure_debut, "seance", s, annulation) for s, annulation in jour["seances"]]
+        creneaux += [(e.heure_debut, "examen", e, None) for e in jour["examens"]]
+        jour["creneaux"] = [c[1:] for c in sorted(creneaux, key=lambda c: c[0])]
+    return jours
+
+
 def semaine_demandee(request):
     try:
         return lundi_de(Date.fromisoformat(request.GET.get("semaine", "")))
@@ -90,12 +107,15 @@ def mon_emploi_du_temps(request):
     else:
         titre = "Mon emploi du temps"
     lundi = semaine_demandee(request)
+    samedi = lundi + timedelta(days=5)
+    jours = planning(seances_de(user), lundi, samedi)
+    ajouter_examens(jours, examens_visibles(user).filter(date__range=(lundi, samedi)))
     return render(
         request,
         "emplois/emploi_du_temps.html",
         {
             "titre": titre,
-            "jours": planning(seances_de(user), lundi, lundi + timedelta(days=5)),
+            "jours": jours,
             "sans_classe": user.est_etudiant and not user.classe_id,
             **contexte_semaine(lundi),
         },
@@ -113,6 +133,7 @@ def emploi_du_temps_classe(request):
     if classe:
         seances = Seance.objects.filter(classe=classe).select_related("matiere", "enseignant", "salle", "groupe")
         jours = planning(seances, lundi, lundi + timedelta(days=5))
+        ajouter_examens(jours, Examen.objects.filter(classe=classe, date__range=(lundi, lundi + timedelta(days=5))))
     return render(
         request,
         "emplois/emploi_du_temps.html",

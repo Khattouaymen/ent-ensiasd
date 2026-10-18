@@ -20,6 +20,8 @@ from annonces.models import Annonce
 from documents.models import DemandeDocument
 from emplois.models import JourNonTravaille, Seance
 from emplois.views import planning, seances_de
+from evaluations.models import envoyer_rappels
+from evaluations.views import echeances
 from ressources.models import Ressource
 from structure.models import Classe, Filiere
 
@@ -43,6 +45,10 @@ def tableau_de_bord(request):
         "fermeture": JourNonTravaille.couvrant(aujourdhui),
         "annonces": Annonce.visibles_par(user)[:3],
     }
+    # Pas de tâche planifiée sur l'hébergement gratuit : les rappels partent à l'ouverture des tableaux de bord.
+    envoyer_rappels()
+    if user.est_etudiant or user.est_enseignant:
+        contexte["a_venir"] = echeances(user, aujourdhui, jusqua=aujourdhui + timedelta(days=14))[:5]
     if user.est_etudiant or user.est_enseignant:
         jours = planning(seances_de(user), aujourdhui, aujourdhui)
         contexte["seances_du_jour"] = jours[0]["seances"] if jours else []

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titre %}Devoirs{% endblock %}
+{% block contenu %}
+<h1 class="h3 mb-4">Devoirs</h1>
+
+<h2 class="titre-section">À rendre</h2>
+<div class="row g-3 mb-4">
+  {% for l in a_rendre %}{% with d=l.devoir %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card carte-module h-100{% if d.est_depasse %} border-danger{% endif %}"><div class="card-body">
+      <span class="icone-ton ton-violet" aria-hidden="true"><i class="bi bi-journal-arrow-up"></i></span>
+      <div>
+        <h3><a href="{{ d.get_absolute_url }}" class="stretched-link">{{ d.titre }}</a></h3>
+        <p class="small text-muted mb-2">{{ d.matiere }} · {{ d.enseignant }}</p>
+        {% if d.est_depasse %}
+          <span class="badge text-bg-danger">Date limite dépassée · rendu en retard accepté</span>
+        {% else %}
+          <span class="badge text-bg-warning"><i class="bi bi-hourglass-split me-1"></i>Avant le {{ d.date_limite|date:"j F à H:i" }}</span>
+        {% endif %}
+      </div>
+    </div></div>
+  </div>
+  {% endwith %}{% empty %}
+  <div class="col-12"><div class="card"><div class="card-body text-muted"><i class="bi bi-emoji-smile me-1"></i>Rien à rendre pour le moment.</div></div></div>
+  {% endfor %}
+</div>
+
+{% if autres %}
+<h2 class="titre-section">Rendus et devoirs passés</h2>
+<div class="card"><div class="table-responsive">
+<table class="table align-middle mb-0">
+  <thead class="table-light"><tr><th>Devoir</th><th>Matière</th><th>Date limite</th><th>Mon rendu</th></tr></thead>
+  <tbody>
+  {% for l in autres %}{% with d=l.devoir r=l.rendu %}
+    <tr>
+      <td><a href="{{ d.get_absolute_url }}" class="fw-semibold">{{ d.titre }}</a></td>
+      <td>{{ d.matiere }}</td>
+      <td>{{ d.date_limite|date:"d/m/Y H:i" }}</td>
+      <td>
+        {% if r %}<span class="badge text-bg-{% if r.en_retard %}warning{% else %}success{% endif %}">{% if r.en_retard %}Rendu en retard{% else %}Rendu{% endif %}</span>
+          <span class="small text-muted">le {{ r.date_depot|date:"d/m/Y H:i" }}</span>
+        {% else %}<span class="badge text-bg-danger">Non rendu</span>{% endif %}
+      </td>
+    </tr>
+  {% endwith %}{% endfor %}
+  </tbody>
+</table>
+</div></div>
+{% endif %}
+{% endblock %}
