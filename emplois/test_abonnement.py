@@ -61,6 +61,11 @@ class AbonnementTests(TestCase):
         self.assertNotIn(uid.format("20261020"), contenu)  # séance annulée
         self.assertIn(uid.format("20261027"), contenu)
 
+    def test_heure_du_maroc_a_jour(self):
+        # Base des fuseaux du paquet tzdata (voir config/settings.py) : UTC+0 depuis le 20 septembre 2026.
+        self.assertEqual(local(date(2026, 9, 1), time(8, 30)).utcoffset(), timedelta(hours=1))
+        self.assertEqual(local(date(2026, 10, 6), time(8, 30)).utcoffset(), timedelta(0))
+
     def test_conversion_en_utc(self):
         heure_marocaine = datetime(2026, 10, 6, 8, 30, tzinfo=fuseau(timedelta(hours=1)))
         self.assertEqual(utc(heure_marocaine), "20261006T073000Z")
