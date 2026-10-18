@@ -8,6 +8,7 @@ urlpatterns = [
     # Enseignant / administrateur
     path("appel/", views.choisir_seance, name="choisir_seance"),
     path("appel/<int:seance_id>/", views.appel, name="appel"),
+    path("suivi/", views.suivi, name="suivi"),
     # Étudiant
     path("mes-absences/", views.mes_absences, name="mes_absences"),
     path("<int:absence_id>/justifier/", views.justifier, name="justifier"),

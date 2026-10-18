@@ -57,6 +57,7 @@
         {% include "comptes/_carte_module.html" with icone="file-earmark-text" ton="turquoise" titre="Demandes de documents" texte="Attestations, relevés de notes…" lien="documents:liste" %}
       {% elif user.est_enseignant %}
         {% include "comptes/_carte_module.html" with icone="clipboard-check" ton="succes" titre="Faire l'appel" texte="Saisir les absences d'une séance." lien="absences:choisir_seance" %}
+        {% include "comptes/_carte_module.html" with icone="clipboard-data" ton="turquoise" titre="Suivi des absences" texte="Assiduité de mes étudiants et alertes de seuil." lien="absences:suivi" %}
         {% include "comptes/_carte_module.html" with icone="journal-check" ton="accent" titre="Devoirs" texte="Publier un devoir et récupérer les rendus." lien="evaluations:devoirs" %}
         {% include "comptes/_carte_module.html" with icone="calendar-event" ton="danger" titre="Examens" texte="Programmer un examen ou un contrôle." lien="evaluations:calendrier" %}
         {% include "comptes/_carte_module.html" with icone="journal-text" ton="violet" titre="Mes ressources" texte="Déposer et gérer mes cours, TD et TP." lien="ressources:liste" %}

@@ -234,6 +234,12 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   padding: .3rem .6rem;
 }
 
+/* Place de la flèche des listes déroulantes */
+.form-select,
+.form-select-sm {
+  padding-right: 2.25rem;
+}
+
 .form-control:focus,
 .form-select:focus {
   border-color: #6f9bd0;

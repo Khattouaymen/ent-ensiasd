@@ -49,7 +49,6 @@ def tableau_de_bord(request):
     envoyer_rappels()
     if user.est_etudiant or user.est_enseignant:
         contexte["a_venir"] = echeances(user, aujourdhui, jusqua=aujourdhui + timedelta(days=14))[:5]
-    if user.est_etudiant or user.est_enseignant:
         jours = planning(seances_de(user), aujourdhui, aujourdhui)
         contexte["seances_du_jour"] = jours[0]["seances"] if jours else []
 
@@ -93,6 +92,7 @@ def tableau_de_bord(request):
             ("Séances par semaine", user.seances.filter(date_unique__isnull=True).count(), "calendar-week", "primaire"),
             ("Classes", user.seances.values("classe").distinct().count(), "people", "turquoise"),
             ("Ressources déposées", user.ressources_deposees.count(), "journal-arrow-up", "violet"),
+            ("Étudiants en alerte", Absence.etudiants_en_alerte(user), "exclamation-triangle", "danger"),
         ]
     elif user.est_etudiant:
         heures = Absence.heures_par_matiere(user)

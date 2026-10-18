@@ -124,6 +124,66 @@ class Absence(models.Model):
         return lignes
 
     @staticmethod
+    def suivi_matiere(matiere, classe):
+        """Assiduité des étudiants actifs d'une classe dans une matière, les plus absents en tête.
+
+        Une ligne par étudiant : {"etudiant", "nombre", "total", "non_justifiees", "retards", "dates",
+        "taux", "alerte"}. « dates » : [(jour, justifiée), …] des absences, de la plus récente à la plus ancienne.
+        """
+        lignes = {
+            e.pk: {"etudiant": e, "nombre": 0, "total": 0.0, "non_justifiees": 0.0, "retards": 0, "dates": []}
+            for e in classe.etudiants.filter(role="ETUDIANT", is_active=True).select_related("groupe")
+        }
+        absences = Absence.objects.filter(seance__matiere=matiere, seance__classe=classe).order_by("-date")
+        for etudiant_id, nature, statut, duree, jour in absences.values_list(
+            "etudiant_id", "nature", "statut", "duree_heures", "date"
+        ):
+            ligne = lignes.get(etudiant_id)
+            if ligne is None:  # étudiant désactivé ou changé de classe
+                continue
+            if nature == Absence.Nature.RETARD:
+                ligne["retards"] += 1
+                continue
+            justifiee = statut == Absence.Statut.JUSTIFIEE
+            ligne["nombre"] += 1
+            ligne["total"] += duree
+            if (jour, justifiee) not in ligne["dates"]:  # deux séances le même jour : une seule date
+                ligne["dates"].append((jour, justifiee))
+            if not justifiee:
+                ligne["non_justifiees"] += duree
+        for ligne in lignes.values():
+            ligne["taux"] = Absence.taux(ligne["non_justifiees"], matiere)
+            ligne["alerte"] = AlerteAbsence.niveau_pour(ligne["taux"])
+        return sorted(
+            lignes.values(),
+            key=lambda l: (-l["taux"], -l["total"], -l["retards"], l["etudiant"].last_name, l["etudiant"].first_name),
+        )
+
+    @staticmethod
+    def etudiants_en_alerte(enseignant):
+        """Nombre d'étudiants ayant atteint un seuil d'alerte dans l'une des matières de l'enseignant."""
+        from structure.models import Enseignement
+
+        filtre = Q()
+        for matiere_id, classe_id in Enseignement.objects.filter(enseignant=enseignant).values_list("matiere_id", "classe_id"):
+            filtre |= Q(seance__matiere_id=matiere_id, seance__classe_id=classe_id)
+        if not filtre:
+            return 0
+        heures = (
+            Absence.objects.filter(
+                filtre, nature=Absence.Nature.ABSENCE, statut=Absence.Statut.NON_JUSTIFIEE, etudiant__is_active=True
+            )
+            .order_by()
+            .values_list("etudiant_id", "seance__matiere_id", "seance__matiere__volume_horaire")
+            .annotate(Sum("duree_heures"))
+        )
+        return len({
+            etudiant_id
+            for etudiant_id, _, volume, total in heures
+            if volume and AlerteAbsence.niveau_pour(100 * total / volume)
+        })
+
+    @staticmethod
     def taux(heures_non_justifiees, matiere):
         """Part des heures non justifiées dans le volume horaire de la matière (en %)."""
         return 100 * heures_non_justifiees / matiere.volume_horaire if matiere.volume_horaire else 0
