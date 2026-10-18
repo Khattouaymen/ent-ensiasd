@@ -3,7 +3,7 @@
 Projet MGSI S3 (2026/2027) – ENSIASD Taroudant.
 Plateforme web : absences, ressources pédagogiques, demandes de documents, classes et emplois du temps.
 
-**Technologies :** Python 3.11 · Django 5.2 LTS · SQLite · Bootstrap 5
+**Technologies :** Python 3.11 (dernière version 3.11.x) · Django 5.2 LTS · SQLite · Bootstrap 5
 
 ## Installation (première fois)
 
@@ -62,14 +62,18 @@ Toutes les user stories du backlog (US01 à US18) sont réalisées, ainsi que le
 
 **Sécurité**
 - Les droits d'administration découlent uniquement du rôle ADMIN (`createsuperuser` crée un compte ADMIN).
-- Connexion bloquée 15 minutes après 5 échecs (par identifiant et adresse IP). Compteur en mémoire : en production avec plusieurs processus, configurer un cache partagé (Redis…).
-- Mot de passe oublié : lien de réinitialisation envoyé par e-mail. En développement, l'e-mail s'affiche dans la console du serveur ; en production, renseigner `DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend`, `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_HOST_USER`, `DJANGO_EMAIL_HOST_PASSWORD`.
+- Connexion bloquée 15 minutes après 5 échecs (par identifiant et adresse IP). Les compteurs sont gardés dans la base (cache Django, table `cache_ent` créée par `migrate`) : ils survivent aux redémarrages du site.
+- Mot de passe oublié : lien de réinitialisation envoyé par e-mail, au plus 3 fois par heure pour une même adresse. En développement, l'e-mail s'affiche dans la console du serveur ; en production, renseigner `DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend`, `DJANGO_EMAIL_HOST`, `DJANGO_EMAIL_HOST_USER`, `DJANGO_EMAIL_HOST_PASSWORD`.
 - Les fichiers déposés ne sont jamais publics, et leur contenu réel est vérifié (un exécutable renommé en `.pdf` est refusé).
+- La session se termine à la fermeture du navigateur, et au plus tard 10 heures après la connexion (ordinateurs partagés).
+- Bootstrap et Chart.js viennent d'un CDN, avec leur empreinte (`integrity`) : un fichier modifié sur le CDN serait refusé par le navigateur.
+  Pour changer de version, recalculer l'empreinte (`openssl dgst -sha384 -binary fichier | openssl base64 -A`).
 
 **Emploi du temps et appel**
 - Détection des conflits de salle, d'enseignant et de classe/groupe ; un enseignant ne peut être planifié que sur une matière qui lui est affectée.
 - Rattrapage = séance avec une date unique. Une annulation (admin › Annulations de séances) notifie l'enseignant et les étudiants.
 - L'appel est impossible un jour non travaillé, pour une séance annulée, une date future ou hors de l'année universitaire.
+- L'appel est enregistré d'un bloc (rien n'est gardé en cas d'erreur) ; un double clic ne l'enregistre qu'une fois.
 - La durée d'une absence est figée au moment de l'appel. Un retard ne compte pas d'heures d'absence.
 - L'appel ne modifie jamais une absence pour laquelle l'étudiant a déposé un justificatif.
 
@@ -97,6 +101,9 @@ schtasks /Create /SC DAILY /ST 02:00 /TN "Sauvegarde ENT ENSIASD" /TR "\"D:\proj
 
 Sous Linux : `0 2 * * * cd /chemin/du/projet && .venv/bin/python manage.py sauvegarder` dans la crontab.
 
+Après la sauvegarde, `python manage.py purger_notifications` supprime les notifications de plus de 180 jours
+(`--jours 90` pour changer la durée) : sans cela, la table grossit à chaque appel et à chaque annulation de séance.
+
 ## Pistes d'amélioration
 
 - Déploiement (PythonAnywhere, Render…) avec `DJANGO_DEBUG=0`, une vraie `DJANGO_SECRET_KEY` et `collectstatic`.
@@ -106,14 +113,19 @@ Sous Linux : `0 2 * * * cd /chemin/du/projet && .venv/bin/python manage.py sauve
 ## Tests
 
 ```bash
-python -X no_debug_ranges manage.py test
+python manage.py test
+pip install ruff && ruff check .   # qualité du code (règles dans pyproject.toml)
 ```
 
-L'option `-X no_debug_ranges` contourne un bug d'affichage des erreurs propre à Python 3.11.0 (corrigé dans les versions 3.11.x suivantes).
+Avec Python 3.11.0, ajouter `-X no_debug_ranges` (`python -X no_debug_ranges manage.py test`) : cette version a un bug
+d'affichage des erreurs, corrigé dans les versions 3.11.x suivantes. Le plus simple est d'installer la dernière 3.11.x.
+
+GitHub Actions (`.github/workflows/tests.yml`) relance tout sur chaque pull request et à chaque fusion dans `main` :
+Ruff, migrations à jour, tests, puis `check --deploy` et `collectstatic` en configuration de production.
 
 ## Règles de travail en équipe
 
 - Une branche Git par user story (`us13-saisie-absences`), fusion par pull request.
-- Lancer les tests avant chaque push.
+- Lancer les tests avant chaque push ; une pull request ne se fusionne que si la vérification GitHub Actions est verte.
 - Après une modification d'un `models.py` : `python manage.py makemigrations` et versionner la migration.
 - Ne jamais versionner `db.sqlite3`, `media/` ni `.venv/` (déjà dans `.gitignore`).

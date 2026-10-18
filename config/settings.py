@@ -103,10 +103,26 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Base de données : SQLite pour le développement et la démonstration.
+# « IMMEDIATE » : une transaction réserve l'écriture dès son début. Deux enregistrements
+# simultanés (appel, justification…) passent alors l'un après l'autre au lieu d'échouer
+# avec « database is locked » ; le second attend au plus « timeout » secondes.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        "OPTIONS": {"transaction_mode": "IMMEDIATE", "timeout": 20},
+    }
+}
+
+# Cache stocké dans la base (table créée par « migrate ») : les compteurs de tentatives de
+# connexion survivent aux redémarrages du site et sont partagés entre ses processus.
+# MAX_ENTRIES élevé : une rafale d'essais sur des identifiants inventés ne doit pas effacer
+# les compteurs existants.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "cache_ent",
+        "OPTIONS": {"MAX_ENTRIES": 10_000},
     }
 }
 
@@ -116,6 +132,11 @@ AUTH_USER_MODEL = "comptes.Utilisateur"
 LOGIN_URL = "connexion"
 LOGIN_REDIRECT_URL = "tableau_de_bord"
 LOGOUT_REDIRECT_URL = "connexion"
+
+# Ordinateurs partagés (salles informatiques) : la session se termine à la fermeture du
+# navigateur, et au plus tard 10 heures après la connexion (une journée de cours).
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 10 * 60 * 60
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -136,6 +157,14 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STOCKAGE_STATIQUES_PRODUCTION = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
+if not DEBUG:
+    # « collectstatic » ajoute une empreinte au nom des fichiers (ent.3f1a9c….css) : après une
+    # mise à jour, les navigateurs chargent la nouvelle version au lieu de garder l'ancienne en cache.
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": STOCKAGE_STATIQUES_PRODUCTION},
+    }
 
 # Les fichiers déposés ne sont jamais servis directement : ils passent par des
 # vues qui vérifient les droits de l'utilisateur (confidentialité, BNF02).

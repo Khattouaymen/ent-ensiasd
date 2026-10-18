@@ -1,0 +1,41 @@
+# Vérifications lancées sur chaque pull request et à chaque fusion dans main.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"  # même version que sur PythonAnywhere
+          cache: pip
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt ruff==0.17.1
+
+      - name: Ruff (qualité du code)
+        run: ruff check .
+
+      - name: Vérifications Django et migrations à jour
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+
+      - name: Tests
+        run: python manage.py test
+
+      - name: Configuration de production (DJANGO_DEBUG=0)
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_ALLOWED_HOSTS: exemple.pythonanywhere.com
+        run: |
+          export DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(50))')"
+          python manage.py check --deploy --fail-level WARNING
+          python manage.py collectstatic --noinput

@@ -63,7 +63,7 @@ def analyser(fichier, classe):
     try:
         entetes = [_normaliser(e) for e in next(lecteur)]
     except StopIteration:
-        raise ValidationError("Le fichier est vide.")
+        raise ValidationError("Le fichier est vide.") from None
     manquantes = [c for c in COLONNES_OBLIGATOIRES if c not in entetes]
     if manquantes:
         raise ValidationError(f"Colonne(s) manquante(s) : {', '.join(manquantes)}. Colonnes trouvées : {', '.join(entetes)}.")

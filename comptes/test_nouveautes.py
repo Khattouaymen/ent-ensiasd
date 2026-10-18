@@ -3,14 +3,20 @@
 import re
 import tempfile
 import zipfile
+from datetime import date, timedelta
 from pathlib import Path
+from unittest import mock
 
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.core.management.base import CommandError
+from django.db import transaction
+from django.test import TestCase, TransactionTestCase, override_settings
 
-from config.donnees_test import creer_etablissement
+from absences.models import Absence
+from config.donnees_test import MARDI, creer_etablissement
+from documents.models import DemandeDocument
 
 from .models import Utilisateur
 
@@ -87,6 +93,13 @@ class MotDePasseTests(TestCase):
         self.assertRedirects(reponse, "/mot-de-passe-oublie/envoye/")
         self.assertEqual(len(mail.outbox), 0)
 
+    def test_trois_e_mails_au_plus_par_heure_et_par_adresse(self):
+        for _ in range(5):
+            reponse = self.client.post("/mot-de-passe-oublie/", {"email": "Nouveau@exemple.ma"})
+            # Même page qu'habituellement : la limite ne révèle rien sur l'adresse
+            self.assertRedirects(reponse, "/mot-de-passe-oublie/envoye/")
+        self.assertEqual(len(mail.outbox), 3)
+
 
 class StatistiquesTests(TestCase):
     @classmethod
@@ -104,8 +117,33 @@ class StatistiquesTests(TestCase):
         self.client.force_login(self.d.etu1)
         self.assertEqual(self.client.get("/statistiques/").status_code, 403)
 
+    def test_totaux_par_matiere_et_par_semaine(self):
+        Absence.objects.create(etudiant=self.d.etu1, seance=self.d.seance, date=MARDI)  # 2 h
+        Absence.objects.create(etudiant=self.d.etu2, seance=self.d.seance, date=MARDI, statut=Absence.Statut.JUSTIFIEE)
+        Absence.objects.create(etudiant=self.d.etu1, seance=self.d.seance, date=date(2026, 9, 29), nature=Absence.Nature.RETARD)
+        demande = DemandeDocument.objects.create(etudiant=self.d.etu1, type_document=DemandeDocument.TypeDocument.RELEVE_NOTES)
+        DemandeDocument.objects.filter(pk=demande.pk).update(
+            statut=DemandeDocument.Statut.PRETE, date_traitement=demande.date_demande + timedelta(days=2)
+        )
+        self.client.force_login(self.d.admin)
+        with mock.patch("comptes.views.timezone.localdate", return_value=date(2026, 10, 15)):
+            contexte = self.client.get(f"/statistiques/?classe={self.d.classe.pk}").context
 
-class SauvegardeTests(TestCase):
+        # Le retard ne compte pas d'heures
+        self.assertEqual(contexte["par_matiere"], [{"matiere": "Bases de données", "justifiees": 2.0, "non_justifiees": 2.0}])
+        semaines = {s["semaine"]: s["heures"] for s in contexte["par_semaine"]}
+        self.assertEqual((semaines["2026-09-28"], semaines["2026-10-05"], semaines["2026-10-12"]), (0.0, 4.0, 0.0))
+        indicateurs = contexte["indicateurs"]
+        self.assertEqual((indicateurs["total"], indicateurs["taux_justification"]), (4.0, 50.0))
+        self.assertEqual((indicateurs["demandes_traitees"], indicateurs["justifications_traitees"]), (1, 0))
+        self.assertAlmostEqual(indicateurs["delai_demandes"], 2.0)
+        self.assertIsNone(indicateurs["delai_justifications"])
+
+
+class SauvegardeTests(TransactionTestCase):
+    # Hors transaction, comme la commande lancée depuis une console : une transaction ouverte
+    # détiendrait le verrou d'écriture de SQLite et empêcherait la copie de la base.
+
     def test_sauvegarde_et_rotation(self):
         with tempfile.TemporaryDirectory() as dossier, override_settings(
             DOSSIER_SAUVEGARDES=Path(dossier), NB_SAUVEGARDES_CONSERVEES=2, MEDIA_ROOT=Path(dossier) / "media"
@@ -116,3 +154,7 @@ class SauvegardeTests(TestCase):
             self.assertEqual(len(archives), 2)
             with zipfile.ZipFile(archives[-1]) as zf:
                 self.assertIn("db.sqlite3", zf.namelist())
+
+    def test_refusee_dans_une_transaction_au_lieu_de_bloquer(self):
+        with transaction.atomic(), self.assertRaisesMessage(CommandError, "transaction"):
+            call_command("sauvegarder")

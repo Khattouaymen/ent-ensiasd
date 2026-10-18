@@ -238,8 +238,7 @@ class AnnulationSeance(models.Model):
             + (f" – {self.motif}." if self.motif else ".")
         )
         lien = f"{reverse('emplois:mon_emploi_du_temps')}?semaine={self.date.isoformat()}"
-        destinataires = [self.seance.enseignant, *self.seance.public()]
-        Notification.objects.bulk_create([Notification(destinataire=u, message=message, lien=lien) for u in destinataires])
+        Notification.envoyer_a([self.seance.enseignant, *self.seance.public()], message, lien)
 
 
 class JourNonTravaille(models.Model):

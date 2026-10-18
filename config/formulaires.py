@@ -35,7 +35,7 @@ def telecharger(fichier):
     try:
         contenu = fichier.open("rb")
     except FileNotFoundError:
-        raise Http404("Fichier introuvable.")
+        raise Http404("Fichier introuvable.") from None
     return FileResponse(contenu, as_attachment=True, filename=os.path.basename(fichier.name))
 
 

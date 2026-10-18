@@ -1,0 +1,14 @@
+# Vérification du code avec Ruff : pip install ruff, puis « ruff check . »
+# (« ruff check --fix . » corrige automatiquement l'ordre des imports et les imports inutilisés).
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+# F : erreurs (noms inconnus, imports inutilisés…) · E, W : style PEP 8 · I : ordre des imports
+# B : pièges courants (valeurs par défaut mutables, exceptions masquées…)
+select = ["F", "E", "W", "I", "B"]
+# « l » désigne une ligne de tableau dans tout le projet : on garde cette convention.
+ignore = ["E741"]

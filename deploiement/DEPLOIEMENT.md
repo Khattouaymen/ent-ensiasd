@@ -46,8 +46,14 @@ Les tâches planifiées (onglet « Tasks ») sont réservées aux comptes payant
 lancez la sauvegarde à la main (par exemple chaque semaine) dans une console Bash :
 
 ```bash
-cd ~/ent-ensiasd && DJANGO_DEBUG=0 DJANGO_SECRET_KEY_FILE=~/.ent_cle_secrete DJANGO_ALLOWED_HOSTS=<identifiant>.pythonanywhere.com ~/.virtualenvs/ent/bin/python manage.py sauvegarder
+cd ~/ent-ensiasd
+export DJANGO_DEBUG=0 DJANGO_SECRET_KEY_FILE=~/.ent_cle_secrete DJANGO_ALLOWED_HOSTS=<identifiant>.pythonanywhere.com
+~/.virtualenvs/ent/bin/python manage.py sauvegarder
+~/.virtualenvs/ent/bin/python manage.py purger_notifications   # notifications de plus de 180 jours
 ```
+
+Les archives restent sur le même compte que le site : téléchargez-en une copie de temps en temps
+(onglet « Files », dossier `ent-ensiasd/sauvegardes/`).
 
 ## Mettre à jour le site après une modification
 
@@ -61,10 +67,12 @@ export DJANGO_DEBUG=0 DJANGO_SECRET_KEY_FILE=~/.ent_cle_secrete DJANGO_ALLOWED_H
 
 Puis **Reload** dans l'onglet « Web ».
 
+`collectstatic` est indispensable à chaque mise à jour : en production, les fichiers statiques portent une empreinte
+dans leur nom (`ent.3f1a9c….css`), et une page qui utilise un fichier absent de `staticfiles/` renvoie une erreur 500.
+
 ## Limites de la formule gratuite
 
 - Le site est désactivé s'il n'est pas prolongé **chaque mois** (bouton *Run until 1 month from today*, onglet « Web ») ; PythonAnywhere envoie un e-mail de rappel une semaine avant.
 - Pas de tâches planifiées : les sauvegardes se lancent à la main (voir plus haut).
 - 100 secondes de calcul par jour pour les consoles (le site lui-même n'est pas concerné).
 - Accès Internet sortant limité : l'envoi d'e-mails (mot de passe oublié) ne fonctionne qu'avec un serveur SMTP autorisé par PythonAnywhere.
-- Le blocage après échecs de connexion compte les essais en mémoire : il est remis à zéro à chaque redémarrage du site.

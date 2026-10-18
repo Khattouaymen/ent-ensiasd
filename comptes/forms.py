@@ -1,3 +1,5 @@
+import time
+
 from django import forms
 from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, PasswordResetForm, SetPasswordForm
@@ -12,6 +14,26 @@ from structure.models import Classe
 # Protection contre les attaques par force brute (BNF01)
 MAX_ECHECS_CONNEXION = 5
 DUREE_BLOCAGE_SECONDES = 15 * 60
+
+# Mot de passe oublié : au plus 3 e-mails par adresse et par heure
+MAX_EMAILS_REINITIALISATION = 3
+DUREE_LIMITE_REINITIALISATION_SECONDES = 60 * 60
+
+
+def compter_tentative(cle, duree):
+    """Ajoute une tentative au compteur « cle » et renvoie le nouveau total.
+
+    Le compteur expire « duree » secondes après la première tentative. cache.incr() ne convient
+    pas : avec le cache en base, il remet l'expiration à la valeur par défaut (5 minutes).
+    """
+    maintenant = time.time()
+    nombre, fin = cache.get(cle, (0, maintenant + duree))
+    cache.set(cle, (nombre + 1, fin), timeout=max(1, round(fin - maintenant)))
+    return nombre + 1
+
+
+def nombre_tentatives(cle):
+    return cache.get(cle, (0, 0))[0]
 
 
 def cle_tentatives(identifiant, request):
@@ -36,14 +58,13 @@ class ConnexionForm(AuthenticationForm):
 
     def clean(self):
         cle = cle_tentatives(self.cleaned_data.get("username"), self.request)
-        if cache.get(cle, 0) >= MAX_ECHECS_CONNEXION:
+        if nombre_tentatives(cle) >= MAX_ECHECS_CONNEXION:
             raise ValidationError(self.error_messages["bloque"], code="bloque")
         try:
             donnees = super().clean()
         except ValidationError:
-            # add() ne fait rien si la clé existe déjà : le délai court depuis le premier échec
-            cache.add(cle, 0, DUREE_BLOCAGE_SECONDES)
-            cache.incr(cle)
+            # Le délai de blocage court depuis le premier échec
+            compter_tentative(cle, DUREE_BLOCAGE_SECONDES)
             raise
         cache.delete(cle)
         return donnees
@@ -54,7 +75,16 @@ class ChangementMotDePasseForm(FormulaireBootstrap, PasswordChangeForm):
 
 
 class DemandeReinitialisationForm(FormulaireBootstrap, PasswordResetForm):
-    pass
+    def get_users(self, email):
+        """Limite les e-mails envoyés à une même adresse, pour qu'on ne puisse pas inonder une boîte.
+
+        Au-delà de la limite, aucun e-mail n'est envoyé, mais la page de confirmation habituelle
+        s'affiche quand même : elle ne doit pas révéler si l'adresse correspond à un compte.
+        """
+        cle = f"reinitialisation:{email.strip().lower()}"
+        if compter_tentative(cle, DUREE_LIMITE_REINITIALISATION_SECONDES) > MAX_EMAILS_REINITIALISATION:
+            return iter(())
+        return super().get_users(email)
 
 
 class NouveauMotDePasseForm(FormulaireBootstrap, SetPasswordForm):
