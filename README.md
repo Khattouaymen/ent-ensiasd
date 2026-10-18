@@ -102,8 +102,8 @@ Toutes les user stories du backlog (US01 à US18) sont réalisées, ainsi que le
 **Abonnement à l'emploi du temps**
 - Chaque étudiant ou enseignant crée, sur sa page « Emploi du temps », un lien secret vers un flux iCalendar (séances qui ont lieu,
   examens, dates limites des devoirs). « Changer de lien » rend l'ancien inutilisable (lien partagé par erreur).
-- Les heures sont écrites en UTC à partir de la base des fuseaux horaires du serveur : celle-ci doit être à jour pour suivre
-  les changements d'heure du Maroc (paquet `tzdata` de `requirements.txt`, et base du système).
+- Les heures sont écrites en UTC. Tout le site lit les heures du Maroc dans le paquet `tzdata` de `requirements.txt`
+  (et non dans la base du système, souvent ancienne chez l'hébergeur) : pour suivre un changement d'heure, mettre à jour ce paquet.
 
 **Suivi des absences et relevé**
 - L'enseignant voit, pour chaque matière et classe qui lui sont affectées, les heures d'absence de chaque étudiant (toutes séances

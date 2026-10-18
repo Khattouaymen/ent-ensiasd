@@ -7,6 +7,7 @@ au développement local.
 """
 
 import os
+import zoneinfo
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -155,6 +156,10 @@ LANGUAGE_CODE = "fr-fr"
 # pour les dates et les messages de Django, au milieu d'une interface rédigée en français.
 LANGUAGES = [("fr", "Français")]
 TIME_ZONE = "Africa/Casablanca"
+# Heures du Maroc lues dans le paquet tzdata (requirements.txt) et non dans la base du système, qui peut être
+# ancienne chez l'hébergeur : celle de PythonAnywhere (2024a) ignore le retour à UTC+0 du 20 septembre 2026.
+# Pour suivre un futur changement d'heure, il suffit de mettre à jour le paquet tzdata.
+zoneinfo.reset_tzpath(to=[])
 USE_I18N = True
 USE_TZ = True
 
