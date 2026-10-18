@@ -260,7 +260,9 @@ def traiter_justification(request, pk):
             except ValidationError as erreur:
                 messages.error(request, erreur.messages[0])
             else:
-                messages.success(request, f"Justification {justification.get_statut_display().lower()}. L'étudiant a été notifié.")
+                messages.success(
+                    request, f"Justification {justification.get_statut_display().lower()}. L'étudiant a été notifié."
+                )
                 return redirect("absences:justifications")
     historique = justification.absence.justifications.exclude(pk=justification.pk)
     return render(

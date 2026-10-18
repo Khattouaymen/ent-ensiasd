@@ -13,8 +13,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
-from reportlab.platypus import Paragraph
 from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph
 
 BLEU = HexColor("#115EA3")
 LOGO = settings.BASE_DIR / "static" / "img" / "logo_ensiasd.jpg"

@@ -218,7 +218,9 @@ class AlerteAbsence(models.Model):
     etudiant = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="étudiant", on_delete=models.CASCADE, related_name="alertes_absence"
     )
-    matiere = models.ForeignKey("structure.Matiere", verbose_name="matière", on_delete=models.CASCADE, related_name="alertes_absence")
+    matiere = models.ForeignKey(
+        "structure.Matiere", verbose_name="matière", on_delete=models.CASCADE, related_name="alertes_absence"
+    )
     niveau = models.CharField(max_length=20, choices=Niveau.choices)
     heures_non_justifiees = models.FloatField("heures non justifiées")
     taux = models.FloatField("part du volume horaire (%)")

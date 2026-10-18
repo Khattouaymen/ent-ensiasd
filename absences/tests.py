@@ -95,9 +95,9 @@ class AbsencesVuesTests(TestCase):
         return f"/absences/appel/{self.d.seance.pk}/?date={date.isoformat()}"
 
     @staticmethod
-    def appel(choix, date=MARDI.isoformat()):
+    def appel(choix, date=None):
         """Données POST de la feuille d'appel : {étudiant: "present" | "absent" | "retard"}."""
-        return {"date": date, **{f"etudiant_{e.pk}": valeur for e, valeur in choix.items()}}
+        return {"date": date or MARDI.isoformat(), **{f"etudiant_{e.pk}": valeur for e, valeur in choix.items()}}
 
     def test_appel_enregistre_puis_corrige(self):
         self.client.force_login(self.d.prof)

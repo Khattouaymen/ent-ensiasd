@@ -9,10 +9,10 @@ En production, l'une des deux options est obligatoire.
 import random
 from datetime import date, datetime, time, timedelta
 
-from django.core.files.base import ContentFile
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
@@ -67,7 +67,7 @@ class Command(BaseCommand):
             try:
                 validate_password(mot_de_passe)
             except ValidationError as erreur:
-                raise CommandError(" ".join(erreur.messages))
+                raise CommandError(" ".join(erreur.messages)) from None
 
         if Filiere.objects.filter(code="MGSI").exists():
             raise CommandError(
@@ -145,7 +145,9 @@ class Command(BaseCommand):
         aujourdhui = timezone.localdate()
         annee = int(classe.annee_universitaire[:4])
         JourNonTravaille.objects.create(nom="Fête de la Marche Verte", date_debut=date(annee, 11, 6), date_fin=date(annee, 11, 6))
-        JourNonTravaille.objects.create(nom="Fête de l'Indépendance", date_debut=date(annee, 11, 18), date_fin=date(annee, 11, 18))
+        JourNonTravaille.objects.create(
+            nom="Fête de l'Indépendance", date_debut=date(annee, 11, 18), date_fin=date(annee, 11, 18)
+        )
         JourNonTravaille.objects.create(nom="Nouvel An", date_debut=date(annee + 1, 1, 1), date_fin=date(annee + 1, 1, 1))
 
         cours_urbanisation = seances[7]  # mercredi 8h30, toute la classe
@@ -188,7 +190,8 @@ class Command(BaseCommand):
         scolarite = Utilisateur.objects.get(username="scolarite")
         absences = list(Absence.objects.filter(nature=Absence.Nature.ABSENCE).exclude(etudiant=absenteiste).order_by("date"))
         for i, absence in enumerate(absences[: max(3, len(absences) // 2)]):
-            justif = Justification(absence=absence, motif=hasard.choice(["Rendez-vous médical.", "Certificat médical.", "Convocation administrative."]))
+            motif = hasard.choice(["Rendez-vous médical.", "Certificat médical.", "Convocation administrative."])
+            justif = Justification(absence=absence, motif=motif)
             justif.piece_jointe.save(f"justificatif_{absence.pk}.pdf", ContentFile(b"%PDF-1.4\n% document fictif\n"), save=False)
             justif.save()
             if i == 0:
