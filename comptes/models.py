@@ -23,6 +23,15 @@ class Utilisateur(AbstractUser):
 
     role = models.CharField("rôle", max_length=20, choices=Role.choices, default=Role.ETUDIANT)
     telephone = models.CharField("téléphone", max_length=20, blank=True)
+    jeton_calendrier = models.CharField(
+        "jeton d'abonnement au calendrier",
+        max_length=64,
+        null=True,
+        blank=True,
+        unique=True,
+        editable=False,
+        help_text="Partie secrète de l'adresse du flux iCalendar de l'emploi du temps.",
+    )
     doit_changer_mot_de_passe = models.BooleanField(
         "doit changer son mot de passe",
         default=False,
